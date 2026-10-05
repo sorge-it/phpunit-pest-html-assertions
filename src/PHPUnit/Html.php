@@ -162,7 +162,7 @@ final readonly class Html
     /** The text of the whole region, white space collapsed, scripts and styles left out. */
     public function text(): string
     {
-        return implode(' ', array_map(Text::of(...), $this->roots())) |> trim(...);
+        return mb_trim(implode(' ', array_map(Text::of(...), $this->roots())));
     }
 
     /**

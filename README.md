@@ -51,10 +51,13 @@ The package has four parts:
 
 ## Requirements
 
-- PHP 8.5
-- PHPUnit 13
-- Pest 5, optional, for the expectations
+- PHP 8.3, 8.4 or 8.5
+- PHPUnit 12.5 or 13
+- Pest 4 or 5, optional, for the expectations
 - Symfony DomCrawler and CssSelector 7.4 or 8.1
+
+The CI tests three stacks: PHP 8.3 with PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4; PHP 8.4 with
+the newest versions; PHP 8.5 with the versions of `composer.lock`.
 
 ## Installation
 

@@ -36,7 +36,7 @@ final class AppearsBefore extends Constraint implements RegionCheck
     private function position(DOMElement $node): int
     {
         $document = $node->ownerDocument;
-        $position = $document instanceof DOMDocument ? new DOMXPath($document)->evaluate('count(preceding::*) + count(ancestor::*)', $node) : 0;
+        $position = $document instanceof DOMDocument ? (new DOMXPath($document))->evaluate('count(preceding::*) + count(ancestor::*)', $node) : 0;
 
         return is_float($position) ? (int) $position : 0;
     }
