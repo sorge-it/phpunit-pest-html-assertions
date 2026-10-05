@@ -11,7 +11,34 @@ permissions:
 
 jobs:
   tests:
+    name: PHP ${{ matrix.php }} · ${{ matrix.stack }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4, the oldest stack the package supports.
+          - php: '8.3'
+            stack: PHPUnit 12 · Pest 4 · Laravel 12 · Symfony 7.4
+            install: >-
+              composer update --no-interaction --prefer-dist
+              --with phpunit/phpunit:^12.5
+              --with pestphp/pest:^4.7
+              --with pestphp/pest-plugin-type-coverage:^4.0
+              --with illuminate/testing:^12.0
+              --with symfony/css-selector:^7.4
+              --with symfony/dom-crawler:^7.4
+              --with symfony/framework-bundle:^7.4
+              --with symfony/http-foundation:^7.4
+          # The newest versions that run on PHP 8.4.
+          - php: '8.4'
+            stack: newest
+            install: composer update --no-interaction --prefer-dist
+          # The versions of composer.lock.
+          - php: '8.5'
+            stack: locked
+            install: composer install --no-interaction --prefer-dist
 
     steps:
       - name: Checkout
@@ -20,12 +47,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ matrix.php }}
           extensions: dom
           coverage: none
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: ${{ matrix.install }}
 
       - name: Test
         run: composer test
