@@ -1,0 +1,334 @@
+# HTML assertions for PHPUnit and Pest
+
+[![Tests](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml/badge.svg)](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml)
+[![Latest Version](https://img.shields.io/packagist/v/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
+[![Total Downloads](https://img.shields.io/packagist/dt/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
+[![License](https://img.shields.io/packagist/l/sorge-it/phpunit-pest-html-assertions)](LICENSE.md)
+
+Check rendered HTML with CSS selectors, never as a string. Built for tests that AI coding agents
+write and run: in Laravel, Livewire, Symfony and TYPO3.
+
+```php
+expect($this->get('/cart'))
+    ->toHaveSelectorCount('[data-cart] li', 3)
+    ->toHaveSelectorText('[data-total]', '42.00 EUR')
+    ->not->toHaveSelector('[data-errors]');
+```
+
+**Works with:** PHPUnit · Pest · Laravel · Livewire · Symfony · TYPO3 · PSR-7 · Laravel Boost · PHPStan · Rector
+
+## Why
+
+Coding agents write a large share of our tests. Left alone, they check HTML the way it is easiest to
+type: `assertSee('<span class="dot">')`, a regular expression over the markup. Those tests fail when
+one more `<span>` wraps a dot, though the page looks the same. And they pass when the text they look
+for sits only in an attribute or a script.
+
+This package asks the DOM instead. `symfony/dom-crawler` parses the page with `Dom\HTMLDocument`, as
+a browser does, and every check selects with CSS.
+
+## Built for coding agents
+
+Each part of the package acts at one step of the loop in which an agent writes a test:
+
+| Step | Part |
+|---|---|
+| Before the agent writes | A [Laravel Boost](#laravel-boost) skill gives the agent the checks and the rules for selectors. |
+| When the agent checks its work | The [PHPStan rule](#phpstan) `html.markupAsString` stops a check of markup as a string and says what to use instead. |
+| When a test fails | The [message](#when-a-check-fails) names the region, what was asked, what was found, and shows the HTML of the region. The agent can fix the test without a browser. |
+| In an existing suite | A [Rector rule](#rector) rewrites the mechanical forms of crawler code. |
+
+## Parts
+
+The package has four parts:
+
+| Part | Namespace | What it holds |
+|---|---|---|
+| PHPUnit | `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit` | the constraints, `Html` (a page or a region of it) and the `AssertsHtml` trait |
+| Pest | `SorgeIt\PhpunitPestHtmlAssertions\Pest` | the expectations and the function `html()` |
+| PHPStan | `SorgeIt\PhpunitPestHtmlAssertions\PHPStan` | the rule `html.markupAsString`, which reports a check of markup as a string |
+| Rector | `SorgeIt\PhpunitPestHtmlAssertions\Rector` | a rule that rewrites the mechanical forms of crawler code |
+
+## Requirements
+
+- PHP 8.5
+- PHPUnit 13
+- Pest 5, optional, for the expectations
+- Symfony DomCrawler and CssSelector 7.4 or 8.1
+
+## Installation
+
+```sh
+composer require --dev sorge-it/phpunit-pest-html-assertions
+```
+
+Where Pest is installed, Composer registers the expectations. `tests/Pest.php` needs no line.
+
+## Quick start
+
+**Pest:**
+
+```php
+it('lists the items of the cart', function () {
+    expect($this->get('/cart'))
+        ->toHaveSelectorCount('[data-cart] li', 3)
+        ->toHaveAnySelectorText('[data-cart] li', 'Apple');
+});
+```
+
+**PHPUnit:**
+
+```php
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml;
+
+final class CartTest extends TestCase
+{
+    use AssertsHtml;
+
+    public function test_it_lists_the_items_of_the_cart(): void
+    {
+        $response = $this->get('/cart');
+
+        self::assertHtmlSelectorCount($response, '[data-cart] li', 3);
+        self::assertHtmlAnySelectorTextSame($response, '[data-cart] li', 'Apple');
+    }
+}
+```
+
+Every method of the trait starts with `assertHtml`. So the trait also works in a Symfony
+`WebTestCase`, which has its own `assertSelectorExists()` and similar methods.
+
+## What a check reads
+
+Each check takes one of these:
+
+- a string of HTML;
+- a Symfony `Crawler`;
+- a Laravel `TestResponse` (also a streamed one), `TestView` or `TestComponent`;
+- a Livewire `Testable`;
+- a PSR-7 `ResponseInterface`, for example in a TYPO3 functional test;
+- a Symfony `Response`;
+- an `Html` of this package.
+
+The package tells the kinds apart by class. None of their frameworks is a dependency.
+
+A string is parsed as a whole page, the way a browser parses it. A fragment of a table without its
+table loses its tags: `<td>x</td>` alone becomes the text `x`. Wrap such a fragment in `<table>`.
+
+## Checks
+
+Text is compared with its white space collapsed and trimmed. The text of a `script`, `style`,
+`template`, `noscript` or `head` inside a node does not count. A node asked for by name keeps its
+own text. The `Any…` checks are for "some node".
+
+Each row gives the call and the sentence of its message when it fails, after the path of the region.
+
+| Expectation (Pest) | Method (PHPUnit trait) | Fails with: "Failed asserting that (page) …" |
+|---|---|---|
+| `toHaveSelector('[data-cart]')` | `assertHtmlSelectorExists` | has a node matching "[data-cart]" |
+| — | `assertHtmlSelectorNotExists` | does not have a node matching "[data-cart]" |
+| `toHaveSelectorCount('li', 3)` | `assertHtmlSelectorCount` | has 3 nodes matching "li" |
+| `toHaveSelectorCountAtLeast('li', 1)` | `assertHtmlSelectorCountAtLeast` | has at least 1 nodes matching "li" |
+| `toHaveSelectorText('h1', 'Orders')` | `assertHtmlSelectorTextSame` | has one node matching "h1" with the text "Orders" |
+| `toHaveSelectorTextContaining('h1', 'Ord')` | `assertHtmlSelectorTextContains` | has one node matching "h1" whose text contains "Ord" |
+| `toHaveAnySelectorText('li', 'Apple')` | `assertHtmlAnySelectorTextSame` | has a node matching "li" with the text "Apple" |
+| `toHaveAnySelectorTextContaining('li', 'App')` | `assertHtmlAnySelectorTextContains` | has a node matching "li" whose text contains "App" |
+| `toHaveSelectorAttribute('a', 'href', '/next')` | `assertHtmlSelectorAttribute` | has one node matching "a" whose attribute "href" is "/next" |
+| `toHaveSelectorAttribute('button', 'disabled')` | `assertHtmlSelectorAttribute` | has one node matching "button" with the attribute "disabled" |
+| `toHaveSelectorAttributeContaining('a', 'href', 'page=2')` | `assertHtmlSelectorAttributeContains` | has one node matching "a" whose attribute "href" contains "page=2" |
+| `toHaveSelectorAttributeNamed('main', 'wire:poll')` | `assertHtmlSelectorAttributeNamed` | has one node matching "main" with an attribute whose name starts with "wire:poll" |
+| `toHaveSelectorClass('[data-status]', 'bg-red-500')` | `assertHtmlSelectorClass` | has one node matching "[data-status]" with the class "bg-red-500" |
+| `toHaveText('Apple Pear')` | `assertHtmlTextSame` | has the text "Apple Pear" |
+| `toHaveTextContaining('Apple')` | `assertHtmlTextContains` | has a text that contains "Apple" |
+| `toHaveTextCount('Apple', 1)` | `assertHtmlTextCount` | has the text "Apple" 1 times |
+| `toAppearBefore('[data-head]', '[data-body]')` | `assertHtmlSelectorBefore` | has the node matching "[data-head]" before the node matching "[data-body]" |
+| `toHaveTitle('Orders')` | `assertHtmlPageTitleSame` | has the title "Orders" |
+| `toHaveInputValue('email', 'anna@example.com')` | `assertHtmlInputValueSame` | has one field named "email" with the value "anna@example.com" |
+| `toBeChecked('[data-agree]')` | `assertHtmlCheckboxChecked` | has one checked box matching "[data-agree]" |
+| `toHaveSelectedOption('[data-country]', 'de')` | `assertHtmlSelectedOption` | has one select matching "[data-country]" with the option "de" chosen |
+| `toBeDisabled('[data-send]')` | `assertHtmlSelectorDisabled` | has one disabled node matching "[data-send]" |
+| `toHaveLink('Next', '/page/2')` | `assertHtmlLink` | has a link "Next" to "/page/2" |
+| `toBeEmptyNode('[data-errors]')` | `assertHtmlSelectorEmpty` | has one empty node matching "[data-errors]" |
+
+What the checks read in detail:
+
+- A field's value (`toHaveInputValue`) is an input's `value`, a textarea's text, or a select's chosen option.
+- The chosen option is the last one marked `selected`, else the first, as a browser does.
+- A node is disabled by itself, or by a disabled `fieldset`, unless it stands in that fieldset's first `legend`.
+- A class check needs every class given, among others, in any order. An empty class list is refused.
+- `toBeEmptyNode` is not `toBeEmpty`: Pest has one of its own.
+
+### One node or none
+
+A check of one node needs exactly one match. Zero or two matches throw `NotOneNode`, so a test never
+reads the first of several by chance. `->not` does not turn that around: `not->toHaveSelectorText()`
+on a node that is not there fails instead of passing. To say that no node is there, use
+`not->toHaveSelector()`.
+
+`->not` in Pest turns a check around, and the message is Pest's own: "Expecting … not to have
+selector …", without the region. `assertHtmlNot()` of the PHPUnit trait keeps the message of this
+package: "(page) does not have a node matching …", with the region.
+
+## Regions and values
+
+`html($value)` turns a page into an `Html`. Pest passes a method it does not know to the object it
+expects and keeps checking the result, so on an `Html` the methods below chain like expectations.
+
+```php
+use function SorgeIt\PhpunitPestHtmlAssertions\Pest\html;
+
+// A region: the page holds it exactly once, or the check fails. Every check after it looks inside it.
+expect(html($page))->within('[data-cart]')
+    ->toHaveSelectorCount('li', 3)
+    ->not->toHaveSelector('[data-errors]');
+
+// The srcdoc of an iframe, as a page of its own.
+expect(html($page))->frame('iframe[data-preview]')->toHaveSelectorText('p', 'Hello');
+
+// Values, in the order of the page.
+expect(html($page))->texts('[data-cart] [data-name]')->toBe(['Apple', 'Pear']);
+expect(html($page))->rawTexts('[data-note]')->toBe(["Line one\nLine two"]);
+expect(html($page))->attributes('[data-item]', 'data-id')->toBe(['1', '2']);
+
+// The same checks on every match. No match is a failure: a loop over nothing would check nothing.
+// `:scope` is the match itself.
+expect($page)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSelectorClass(':scope', 'rounded-full'));
+
+// Every attribute value of the region, whatever the name of the attribute.
+expect(html($page)->attributeValues())->each->not->toContain('javascript:');
+```
+
+A negated check on a region that is not there would always pass. `within()` prevents that.
+
+**A region finds what lies below its element, as `querySelectorAll` of a browser does.** The element
+itself is not a match: in `within('[data-cart]')`, the selector `[data-cart]` finds nothing, and
+`body li` still finds the items, because a selector is read against the whole page. `:scope` alone
+names the element of the region. Symfony translates `:scope` by position, so `:scope.x` or
+`:scope > li` would find the wrong nodes. `Html` refuses both.
+
+In plain PHP, `Html` has the same methods: `Html::of($value)->within($selector)`, `->frame()`,
+`->matches()`, `->texts()`, `->rawTexts()`, `->attributes()`, `->attributeValues()`, `->count()`,
+`->text()`.
+
+## When a check fails
+
+The message gives the path of regions, what was asked, what was found, and the region itself as
+indented HTML, cut at 40 lines:
+
+```
+Failed asserting that (page) > [data-cart] has one node matching "[data-name="Pear"]" with the text "Pear, ripe".
+Its text is "Pear".
+
+In (page) > [data-cart]:
+  <ul data-cart>
+    <li data-name="Apple" class="rounded-lg bg-green-500">
+      Apple
+    <li data-name="Pear" class="rounded-lg">
+      Pear
+```
+
+A check of one node that finds none or two says so, with the same region:
+
+```
+NotOneNode: (page) > [data-cart]: a check of one node needs exactly one match. The selector "[data-name]" finds 2 nodes.
+```
+
+`dump()` and `dd()` of Pest show the same path and region.
+
+## Which selector
+
+1. The element, its role, `aria-*`, its label or its visible text.
+2. A `data-*` marker: the functional marker that the app (Alpine, scripts) and the tests share. A CSS
+   class is for the look, not for a selector.
+3. A class is a value to check (`toHaveSelectorClass('[data-status]', 'bg-red-500')`), not the
+   selector. Markup of a vendor such as Filament is the exception: its own classes (`fi-ta-cell`,
+   `fi-badge`) are its functional hooks.
+
+Escape a colon or a dot in an attribute name: `[wire\:model="name"]`, `[wire\:poll\.10s]`.
+
+## PHPStan
+
+With `phpstan/extension-installer`, `extension.neon` loads automatically. Without it, include
+`vendor/sorge-it/phpunit-pest-html-assertions/extension.neon`. In a directory named `tests` or
+`Tests`, the rule `html.markupAsString` reports:
+
+- `assertSeeHtml`, `assertDontSeeHtml`, `assertSeeHtmlInOrder`, `assertSeeInOrder`, always;
+- `assertSee` and `assertDontSee` with escaping off;
+- `toContain`, `toBe`, `toStartWith`, `toEndWith`, `toMatch`, `assertStringContainsString`,
+  `assertStringNotContainsString`, `assertStringStartsWith`, `assertStringEndsWith`,
+  `assertMatchesRegularExpression` and `assertDoesNotMatchRegularExpression`, where a literal holds
+  markup;
+- the string methods of Laravel's `Str` and `Stringable` (`between`, `after`, `before`, `contains`,
+  `match` and similar), where a literal holds markup or is a bracket of a tag alone;
+- `preg_match`, `preg_match_all`, `str_contains`, `str_starts_with`, `str_ends_with`, `strpos`,
+  `substr_count` and their `i` and `mb_` forms, where a literal holds markup.
+
+Markup is a tag (also in a regular expression, `<div[^>]*>`), an attribute of HTML with its value, or
+the name of a `data-*` or `wire:` attribute. After `[` it is a CSS selector and not reported.
+
+The rule reads literals, so it does not see everything: `mb_substr_count($html, 'bg-red-500')`
+holds a class and no markup, and passes.
+
+A check that compares a string on purpose, for example the byte contract of a function that rewrites
+markup, says so on its line. PHPStan asks for the reason and reports the line when it no longer
+matches:
+
+```php
+expect($rewritten)->toBe($expected); // @phpstan-ignore html.markupAsString (the rewriter keeps every other byte)
+```
+
+A suite that PHPStan reads at no other level can read its tests at level 0 for this rule alone.
+
+## Rector
+
+`SorgeIt\PhpunitPestHtmlAssertions\Rector\CrawlerToHtmlRector` rewrites three forms of crawler code:
+
+| Before | After |
+|---|---|
+| `new Crawler($x)->filter($s)->count()` | `Html::of($x)->count($s)` |
+| `new Crawler($x)->filter($s)->each(fn (Crawler $n): string => $n->text())` | `Html::of($x)->texts($s)` |
+| `new Crawler($x)->filter($s)->each(fn (Crawler $n): ?string => $n->attr('a'))` | `Html::of($x)->attributes($s, 'a')` |
+
+It rewrites only `new Symfony\Component\DomCrawler\Crawler($x)` where `$x` is a string. The texts
+change slightly: `texts()` leaves out a script, a style or a `template` inside a node, and
+`Crawler::text()` keeps them. Run the suite after the rewrite.
+
+Add it to the `rector.php` of a project for a migration: `->withRules([CrawlerToHtmlRector::class])`.
+
+## Laravel Boost
+
+The package ships a skill for [Laravel Boost](https://github.com/laravel/boost) in
+`resources/boost/skills/`. Boost finds it in every direct dependency and gives it to your coding
+agent, so the agent writes these checks instead of string checks.
+
+## Not in scope
+
+- CSS: whether a rule takes effect is a question for a browser test (`getComputedStyle`).
+- Accessibility: `axe-core` in a browser test.
+- HTML snapshots: a snapshot takes every change as the new truth.
+
+## Development
+
+```sh
+composer test   # Pint and Rector as a dry run, PHPStan at max, type coverage 100 %, the test suites
+composer lint   # Rector, then Pint
+```
+
+Bug reports and pull requests are welcome on
+[GitHub](https://github.com/sorge-it/phpunit-pest-html-assertions/issues).
+
+## Security
+
+Please report a security problem by email to github@sorge-it.de, not in a public issue.
+
+## License
+
+MIT. See [LICENSE.md](LICENSE.md).
+
+## About the author
+
+**Stefan Sorge** · PHP expert, builder, agentic engineer.
+25 years of PHP and tech for 40+ startups. I build tools that humans and AI agents
+read and act on the same way.
+
+[GitHub](https://github.com/sorge-it) · [LinkedIn](https://www.linkedin.com/in/stefansorge/)

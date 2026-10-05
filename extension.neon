@@ -1,0 +1,2 @@
+rules:
+    - SorgeIt\PhpunitPestHtmlAssertions\PHPStan\MarkupAsStringRule

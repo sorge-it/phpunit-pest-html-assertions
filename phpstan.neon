@@ -1,0 +1,20 @@
+includes:
+    - extension.neon
+
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    # Fixtures of the two rules: code to be analysed or rewritten, not code of the package.
+    # PHPStan knows neither the expectations Pest adds through `extend()` nor its
+    # higher-order chain, so the Pest suite is left to Pest, as the app does with its tests.
+    excludePaths:
+        - tests/Rector/Fixture
+        - tests/PHPStan/data
+        - tests/Pest
+    # Livewire is no dependency of the package; its one method the package calls is declared here.
+    scanFiles:
+        - stubs/Testable.stub
+    reportUnmatchedIgnoredErrors: true
+    tmpDir: .tmp/phpstan

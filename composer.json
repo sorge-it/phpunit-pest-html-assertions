@@ -1,0 +1,92 @@
+{
+    "name": "sorge-it/phpunit-pest-html-assertions",
+    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With a PHPStan rule and a Rector rule.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["phpunit", "pest", "html", "dom", "css-selector", "assertions", "laravel", "livewire", "symfony", "typo3", "laravel-boost", "ai-agents"],
+    "homepage": "https://github.com/sorge-it/phpunit-pest-html-assertions",
+    "authors": [
+        {
+            "name": "Stefan Sorge",
+            "homepage": "https://github.com/sorge-it"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/sorge-it/phpunit-pest-html-assertions/issues",
+        "source": "https://github.com/sorge-it/phpunit-pest-html-assertions"
+    },
+    "require": {
+        "php": "^8.5",
+        "ext-dom": "*",
+        "phpunit/phpunit": "^13.2",
+        "symfony/css-selector": "^7.4|^8.1",
+        "symfony/dom-crawler": "^7.4|^8.1"
+    },
+    "require-dev": {
+        "illuminate/testing": "^13.0",
+        "laravel/pint": "^1.29",
+        "nyholm/psr7": "^1.8",
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-type-coverage": "^5.0",
+        "phpstan/phpstan": "^2.2",
+        "psr/http-message": "^2.0",
+        "rector/rector": "^2.5",
+        "symfony/framework-bundle": "^8.1",
+        "symfony/http-foundation": "^8.1"
+    },
+    "suggest": {
+        "pestphp/pest": "Adds the checks as expectations and the function html().",
+        "phpstan/phpstan": "Reports a check of markup as a string, through extension.neon.",
+        "rector/rector": "Rewrites the mechanical forms of crawler code to the tools of this package."
+    },
+    "autoload": {
+        "psr-4": {
+            "SorgeIt\\PhpunitPestHtmlAssertions\\": "src/"
+        },
+        "files": [
+            "src/Pest/Autoload.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SorgeIt\\PhpunitPestHtmlAssertions\\Fixtures\\": "fixtures/",
+            "SorgeIt\\PhpunitPestHtmlAssertions\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "phpstan": {
+            "includes": [
+                "extension.neon"
+            ]
+        }
+    },
+    "scripts": {
+        "test": [
+            "@test:lint",
+            "@test:types",
+            "@test:type-coverage",
+            "@test:unit"
+        ],
+        "test:unit": "pest",
+        "test:types": "phpstan",
+        "test:type-coverage": "pest --type-coverage --min=100",
+        "test:lint": [
+            "pint --test",
+            "rector --dry-run"
+        ],
+        "lint": [
+            "rector",
+            "pint"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "lock": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

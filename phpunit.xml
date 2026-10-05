@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         cacheDirectory=".tmp/phpunit">
+    <!-- One suite for each part of the package. -->
+    <testsuites>
+        <testsuite name="PHPUnit">
+            <directory>tests/PHPUnit</directory>
+        </testsuite>
+        <testsuite name="Pest">
+            <directory>tests/Pest</directory>
+        </testsuite>
+        <testsuite name="PHPStan">
+            <directory>tests/PHPStan</directory>
+        </testsuite>
+        <testsuite name="Rector">
+            <directory>tests/Rector</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>
