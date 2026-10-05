@@ -1,2 +1,20 @@
+parameters:
+    htmlAssertions:
+        # Reports a class in camelCase too. Only for a project that names its classes so.
+        camelCaseClasses: false
+
+parametersSchema:
+    htmlAssertions: structure([
+        camelCaseClasses: bool()
+    ])
+
 rules:
     - SorgeIt\PhpunitPestHtmlAssertions\PHPStan\MarkupAsStringRule
+
+services:
+    -
+        class: SorgeIt\PhpunitPestHtmlAssertions\PHPStan\ClassAsStringRule
+        arguments:
+            camelCaseClasses: %htmlAssertions.camelCaseClasses%
+        tags:
+            - phpstan.rules.rule

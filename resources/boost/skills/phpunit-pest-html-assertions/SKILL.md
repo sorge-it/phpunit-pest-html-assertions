@@ -1,6 +1,6 @@
 ---
 name: phpunit-pest-html-assertions
-description: "Checks rendered HTML in PHPUnit and Pest tests with CSS selectors, never as a string. Activate when a test checks the HTML of a response, a Blade view or component, a Livewire component, a TYPO3 or Symfony response, or a string of markup; when a test uses assertSee, assertSeeHtml, toContain or a regular expression on HTML; when a test reads text or attributes from a page; or when PHPStan reports html.markupAsString."
+description: "Checks rendered HTML in PHPUnit and Pest tests with CSS selectors, never as a string. Activate when a test checks the HTML of a response, a Blade view or component, a Livewire component, a TYPO3 or Symfony response, or a string of markup; when a test uses assertSee, assertSeeHtml, toContain or a regular expression on HTML; when a test reads text or attributes from a page; or when PHPStan reports html.markupAsString or html.classAsString."
 license: MIT
 metadata:
   author: sorge-it
@@ -10,7 +10,8 @@ metadata:
 
 ## Rules
 
-- Check HTML through the DOM with a CSS selector. Never compare markup as a string: no `assertSee`, `assertSeeHtml`, `toContain('<div')` or regular expression on HTML. PHPStan reports these as `html.markupAsString`.
+- Check HTML through the DOM with a CSS selector. Never compare markup as a string: no `assertSee`, `assertSeeHtml`, `toContain('<div')` or regular expression on HTML.
+- Never search the HTML for a class as text: `toContain('lg:grid-cols-4')` passes when the class is on any element, in a script or in a comment. Ask the element with `toHaveSelectorClass()`.
 - Select by element, role, `aria-*`, label or visible text first, then by a `data-*` marker. A CSS class is a value to check, not a selector. Vendor markup (for example Filament's `fi-*` classes) is the exception.
 - Every check takes a string of HTML, a Symfony `Crawler`, a Laravel `TestResponse`, `TestView` or `TestComponent`, a Livewire `Testable`, a PSR-7 `ResponseInterface`, a Symfony `Response`, or an `Html`.
 - A string is parsed as a whole page. A table cell without its table loses its tags: wrap a fragment such as `<td>x</td>` in `<table>`.
@@ -95,3 +96,24 @@ In plain PHP: `Html::of($value)->within($selector)`, `->frame()`, `->matches()`,
 ## Text
 
 Text is compared with white space collapsed and trimmed. The text of a `script`, `style`, `template`, `noscript` or `head` inside the node does not count.
+
+## PHPStan
+
+Two rules report a string check in a test. Replace the check. Do not change the code only to stop the report:
+
+| Rule | Reports | Use instead |
+|---|---|---|
+| `html.markupAsString` | markup in a string check: `assertSeeHtml('<b>')`, `toContain('<div')` | a check with a CSS selector |
+| `html.classAsString` | a Tailwind class in a string check: `toContain('lg:flex')`, `expect(str_contains($html, 'lg:flex'))->toBeTrue()` | `toHaveSelectorClass()` or `assertHtmlSelectorClass()` |
+
+```php
+expect($response)->toHaveSelectorClass('[data-highlights]', 'lg:grid-cols-4');
+```
+
+Ignore a line only when the string is not HTML, or when the test compares a string on purpose. Give the reason:
+
+```php
+expect($script)->toContain('lg:hidden'); // @phpstan-ignore html.classAsString (the script adds the class)
+```
+
+A project whose classes are in camelCase (`headerNav`) sets `parameters.htmlAssertions.camelCaseClasses: true` in `phpstan.neon`. Then `html.classAsString` also reports those classes.

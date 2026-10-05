@@ -1,6 +1,6 @@
 {
     "name": "sorge-it/phpunit-pest-html-assertions",
-    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With a PHPStan rule and a Rector rule.",
+    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With two PHPStan rules and a Rector rule.",
     "type": "library",
     "license": "MIT",
     "keywords": ["phpunit", "pest", "html", "dom", "css-selector", "assertions", "laravel", "livewire", "symfony", "typo3", "laravel-boost", "ai-agents"],
@@ -18,6 +18,7 @@
     "require": {
         "php": "^8.3",
         "ext-dom": "*",
+        "ext-mbstring": "*",
         "phpunit/phpunit": "^12.5|^13.2",
         "symfony/css-selector": "^7.4|^8.1",
         "symfony/dom-crawler": "^7.4|^8.1",
@@ -38,7 +39,7 @@
     },
     "suggest": {
         "pestphp/pest": "Adds the checks as expectations and the function html().",
-        "phpstan/phpstan": "Reports a check of markup as a string, through extension.neon.",
+        "phpstan/phpstan": "Reports a check of markup or of a class as a string, through extension.neon.",
         "rector/rector": "Rewrites the mechanical forms of crawler code to the tools of this package."
     },
     "autoload": {
