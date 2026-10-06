@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-/** The page of a cart, as a view would render it. */
+/** The page of a cart, as a view renders it, with a bug: the total is empty. */
 function cart(): string
 {
     return <<<'HTML'
@@ -12,7 +12,7 @@ function cart(): string
             <li data-name="Apple">Apple</li>
             <li data-name="Pear">Pear</li>
           </ul>
-          <p data-total>42.00 EUR</p>
+          <p data-total></p>
         </main>
         HTML;
 }

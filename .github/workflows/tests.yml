@@ -57,13 +57,13 @@ jobs:
       - name: Test
         run: composer test
 
-      # The demo app installs the package from this checkout, as a project does: PHPStan reports
-      # the string check, and Pest shows the line of the test, not a frame of the package.
-      # Both runs fail on purpose, so their output is read, not their exit code.
+      # The demo cart has an empty total: the string check stays green, PHPStan reports it, the
+      # check by selector fails at the test line. Those two fail on purpose: their output is read.
       - name: Demo
         working-directory: demo/app
         run: |
           composer install --no-interaction --no-progress
+          vendor/bin/pest tests/StringTest.php
           phpstan=$(vendor/bin/phpstan analyse --no-progress --error-format=json || true)
           grep -q html.markupAsString <<< "$phpstan"
           pest=$(vendor/bin/pest --colors=never tests/CartTest.php || true)

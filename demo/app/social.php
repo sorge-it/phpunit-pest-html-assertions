@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// The screen of the social preview: the name, then the failure without Pest's header.
+// The screen of the social preview: the name, then the failure up to the line of the test.
 
 exec('vendor/bin/pest --colors=always tests/CartTest.php', $lines);
 
@@ -13,7 +13,7 @@ foreach ($lines as $line) {
         $failure[] = $line;
     }
 
-    if (str_contains($line, 'Tests:')) {
+    if (str_contains($line, '➜')) {
         break;
     }
 }
