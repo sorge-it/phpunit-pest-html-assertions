@@ -104,7 +104,7 @@ expect(html($response)->attributeValues())->each->not->toContain('javascript:');
 expect($response)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSelectorClass(':scope', 'rounded-full'));
 ```
 
-A region reads like `querySelectorAll`: it finds nodes below its element, not the element itself. `:scope` alone names the element of the region. `:scope > li` and `:scope.x` are refused.
+A region reads like `querySelectorAll`: it finds nodes below its element, not the element itself. `:scope` alone names the element of the region. `:scope > li` and `:scope.x` are refused. A node inside a `<template>` matches no selector, as in a browser.
 
 In plain PHP: `Html::of($value)->within($selector)`, `->frame()`, `->matches()`, `->texts()`, `->rawTexts()`, `->attributes()`, `->attributeValues()`, `->count()`, `->text()`.
 

@@ -286,6 +286,9 @@ itself is not a match: in `within('[data-cart]')`, the selector `[data-cart]` fi
 names the element of the region. Symfony translates `:scope` by position, so `:scope.x` or
 `:scope > li` would find the wrong nodes. `Html` refuses both.
 
+**A node inside a `<template>` matches no selector**, as in a browser: the page shows it only when a
+script copies it. The `<template>` element itself matches.
+
 In plain PHP, `Html` has the same methods: `Html::of($value)->within($selector)`, `->frame()`,
 `->matches()`, `->texts()`, `->rawTexts()`, `->attributes()`, `->attributeValues()`, `->count()`,
 `->text()`.
