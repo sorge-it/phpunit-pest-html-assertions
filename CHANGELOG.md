@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1
+
+### Changed
+
+- The package type is `phpstan-extension`, so Packagist lists the package among the extensions of
+  PHPStan. A project sees no change: `phpstan/extension-installer` loaded the rules before, through
+  `extra.phpstan`.
+
 ## 1.4.0
 
 ### Added
