@@ -7,8 +7,9 @@
 [![PHP Version](https://img.shields.io/packagist/php-v/sorge-it/phpunit-pest-html-assertions)](composer.json)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](phpstan.neon)
 
-Check rendered HTML with CSS selectors, never as a string. Built for tests that AI coding agents
-write and run: in Laravel, Livewire, Symfony and TYPO3.
+**Your coding agent's tests are green, and the page is broken.** Agents check HTML the quickest
+way, as a string, and such a check passes by accident and fails for nothing. This package makes
+every check ask the DOM, and keeps your agent doing it.
 
 ```php
 expect($this->get('/cart'))
@@ -19,11 +20,49 @@ expect($this->get('/cart'))
 
 **Works with:** PHPUnit · Pest · Laravel · Livewire · Symfony · TYPO3 · PSR-7 · Laravel Boost · Claude Code · PHPStan · Rector
 
-![PHPStan reports a check of markup as a string; the check by selector fails and shows the region](https://raw.githubusercontent.com/sorge-it/phpunit-pest-html-assertions/main/demo/output/demo.gif)
+![A string check stays green on a broken page, PHPStan reports it, and the check by selector fails and shows the region](https://raw.githubusercontent.com/sorge-it/phpunit-pest-html-assertions/main/demo/output/demo.gif)
 
-PHPStan reports a check of markup as a string. The check by selector fails, names the region,
-gives the reason and shows the HTML of the region, at the line of the test. The demo is recorded
-from the app in [`demo/`](demo).
+The total on the cart page is empty. A string check stays green, PHPStan reports it, and the check
+by selector goes red at the line of the test and shows the HTML. The demo runs the app in
+[`demo/`](demo), and the CI runs it on every change.
+
+## Why this exists
+
+I hold my tests to one rule: green means the page works, red means it does not.
+
+Tests that read HTML as a string break that rule in both directions. One of mine went red because
+one more `<span>` wrapped a dot, and the page was fine. The other direction is worse:
+
+```php
+// The total is empty on the page. The test stays green:
+// it finds the marker, not the amount.
+expect($html)->toContain('data-total');
+
+// This one goes red and shows the region.
+expect($html)->toHaveSelectorText('[data-total]', '42.00 EUR');
+```
+
+A string check also passes when its text sits only in an attribute or a script. Some string checks
+test nothing at all. Some are green by luck.
+
+This matters more now than it used to. Coding agents produce code faster than anyone can click
+through it. Testing the UI by hand on every change costs too much, so in practice it does not
+happen. Browser tests are too slow and too heavy to cover every detail; they keep their job for
+JavaScript and CSS. That leaves the HTML the server renders, checked in a feature test. The agent
+writes these tests for almost nothing, and we need many of them. They only help if they are right.
+
+In one of my Laravel apps, I counted 502 lines in 53 test files that checked the page as a string.
+The agent had not done anything wrong. It had used the tools it had. So I gave it better ones:
+
+- before it writes, a [skill](#for-coding-agents) gives it the rules;
+- when it checks its work, [PHPStan](#phpstan) reports a check of markup as a string;
+- when a test fails, the [message](#when-a-check-fails) shows the region as HTML, at the line of
+  the test.
+
+The same app now runs 591 checks by CSS selector, and PHPStan stops a new string check of markup
+before it lands.
+
+I built this so I can trust a green test again. I hope it lets you trust yours.
 
 ## Installation
 
@@ -67,16 +106,6 @@ final class CartTest extends TestCase
 Every method of the trait starts with `assertHtml`. So the trait also works in a Symfony
 `WebTestCase`, which has its own `assertSelectorExists()` and similar methods.
 
-## Why
-
-Coding agents write many tests. Without help, they check HTML the way it is easiest to type:
-`assertSee('<span class="dot">')`, a regular expression over the markup. Those tests fail when one
-more `<span>` wraps a dot, though the page looks the same. And they pass when the text they look for
-sits only in an attribute or a script.
-
-This package reads the DOM instead. `symfony/dom-crawler` parses the page with `Dom\HTMLDocument`, as
-a browser does, and every check selects with CSS.
-
 ## Compared with
 
 | Tool | What it checks | The difference |
@@ -86,17 +115,6 @@ a browser does, and every check selects with CSS.
 | `sinnbeck/laravel-dom-assertions` | CSS selectors | Laravel's test responses, views and Livewire components; this package also reads Symfony, TYPO3 and PSR-7 responses and adds PHPStan rules |
 | Laravel Dusk, Pest's browser tests | a real browser | for JavaScript, CSS and clicks; slower. This package checks the HTML the server renders, in a unit or feature test |
 | HTML snapshots | the whole page | fail on every change; an update accepts the whole new page |
-
-## Built for coding agents
-
-The package acts at each step of the loop in which an agent writes a test:
-
-| Step | What acts |
-|---|---|
-| Before the agent writes | A [skill](#for-coding-agents) gives the agent the checks and the rules for selectors: through Laravel Boost, Claude Code or the `skills` CLI. Boost also adds a short guideline to every task. |
-| When the agent checks its work | The [PHPStan rules](#phpstan) `html.markupAsString` and `html.classAsString` report a check of markup or of a class as a string and say what to use instead. |
-| When a test fails | The [message](#when-a-check-fails) names the region, what was asked, what was found, and shows the HTML of the region. It points at the line of the test, not into this package. The agent can fix the test without a browser. |
-| In an existing suite | A [Rector rule](#rector) rewrites the mechanical forms of crawler code. |
 
 ## Requirements
 

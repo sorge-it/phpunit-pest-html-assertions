@@ -19,7 +19,8 @@ build: ## Build the image: VHS with PHP and Composer
 install: build ## Install the demo app, with the package from this checkout
 	$(RUN) sh -c 'cd demo/app && rm -rf vendor composer.lock && composer install --no-interaction --no-progress -q'
 
-preflight: install ## Check that both scenes show what the recording expects
+preflight: install ## Check that every scene shows what the recording expects
+	$(RUN) sh -c 'cd demo/app && vendor/bin/pest tests/StringTest.php'
 	$(RUN) sh -c 'cd demo/app && vendor/bin/phpstan analyse --no-progress --error-format=json | grep -q "html.markupAsString"'
 	$(RUN) sh -c 'cd demo/app && vendor/bin/pest --colors=never tests/CartTest.php | grep -q "at tests/CartTest.php"'
 	$(RUN) sh -c 'cd demo/app && ! vendor/bin/pest --colors=never tests/CartTest.php | grep -q "src/PHPUnit/"'
