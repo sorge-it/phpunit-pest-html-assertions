@@ -1,9 +1,9 @@
 {
     "name": "sorge-it/phpunit-pest-html-assertions",
-    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With two PHPStan rules and a Rector rule.",
+    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With PHPStan rules, a Rector rule and a skill for AI coding agents.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["phpunit", "pest", "html", "dom", "css-selector", "assertions", "laravel", "livewire", "symfony", "typo3", "laravel-boost", "ai-agents"],
+    "keywords": ["phpunit", "pest", "html", "dom", "css-selector", "assertions", "testing", "laravel", "livewire", "blade", "symfony", "typo3", "dom-crawler", "phpstan", "phpstan-extension", "rector", "tailwind", "laravel-boost", "ai-agents", "agent-skills", "claude-code"],
     "homepage": "https://github.com/sorge-it/phpunit-pest-html-assertions",
     "authors": [
         {
@@ -12,13 +12,15 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/sorge-it/phpunit-pest-html-assertions/issues",
-        "source": "https://github.com/sorge-it/phpunit-pest-html-assertions"
+        "source": "https://github.com/sorge-it/phpunit-pest-html-assertions",
+        "docs": "https://github.com/sorge-it/phpunit-pest-html-assertions#readme",
+        "security": "https://github.com/sorge-it/phpunit-pest-html-assertions/security/policy"
     },
     "require": {
         "php": "^8.3",
         "ext-dom": "*",
         "ext-mbstring": "*",
+        "composer-runtime-api": "^2.1",
         "phpunit/phpunit": "^12.5|^13.2",
         "symfony/css-selector": "^7.4|^8.1",
         "symfony/dom-crawler": "^7.4|^8.1",
@@ -47,6 +49,7 @@
             "SorgeIt\\PhpunitPestHtmlAssertions\\": "src/"
         },
         "files": [
+            "src/PHPUnit/Autoload.php",
             "src/Pest/Autoload.php"
         ]
     },

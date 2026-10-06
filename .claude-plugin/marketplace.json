@@ -1,0 +1,15 @@
+{
+    "name": "sorge-it",
+    "description": "Skills for the PHP packages of Sorge IT.",
+    "owner": {
+        "name": "Stefan Sorge",
+        "url": "https://github.com/sorge-it"
+    },
+    "plugins": [
+        {
+            "name": "phpunit-pest-html-assertions",
+            "source": "./",
+            "description": "Check rendered HTML in PHPUnit and Pest tests with CSS selectors, never as a string."
+        }
+    ]
+}

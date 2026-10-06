@@ -12,7 +12,7 @@ metadata:
 
 - Check HTML through the DOM with a CSS selector. Never compare markup as a string: no `assertSee`, `assertSeeHtml`, `toContain('<div')` or regular expression on HTML.
 - Never search the HTML for a class as text: `toContain('lg:grid-cols-4')` passes when the class is on any element, in a script or in a comment. Ask the element with `toHaveSelectorClass()`.
-- Select by element, role, `aria-*`, label or visible text first, then by a `data-*` marker. A CSS class is a value to check, not a selector. Vendor markup (for example Filament's `fi-*` classes) is the exception.
+- Select by tag, role, `aria-*`, label or visible text first, then by a `data-*` marker. A CSS class is a value to check, not a selector. Vendor markup (for example Filament's `fi-*` classes) is the exception.
 - Every check takes a string of HTML, a Symfony `Crawler`, a Laravel `TestResponse`, `TestView` or `TestComponent`, a Livewire `Testable`, a PSR-7 `ResponseInterface`, a Symfony `Response`, or an `Html`.
 - A string is parsed as a whole page. A table cell without its table loses its tags: wrap a fragment such as `<td>x</td>` in `<table>`.
 - Escape a colon or a dot in an attribute name: `[wire\:model="name"]`.
@@ -107,6 +107,12 @@ expect($response)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSel
 A region reads like `querySelectorAll`: it finds nodes below its element, not the element itself. `:scope` alone names the element of the region. `:scope > li` and `:scope.x` are refused.
 
 In plain PHP: `Html::of($value)->within($selector)`, `->frame()`, `->matches()`, `->texts()`, `->rawTexts()`, `->attributes()`, `->attributeValues()`, `->count()`, `->text()`.
+
+## When a check fails
+
+The message names the path of regions, for example `(page) > [data-cart]`, then what was asked and what was found. Below follows the HTML of the region, cut at 40 lines. Read it to fix the test or the view; no browser is needed.
+
+A failure points at the line of the test; the trace leaves out the frames of this package. To see them, for example to report a bug in the package, run the test with `HTML_ASSERTIONS_SHOW_FRAMES=1` set in the shell, not in `phpunit.xml`.
 
 ## Text
 

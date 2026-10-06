@@ -4,6 +4,8 @@
 [![Latest Version](https://img.shields.io/packagist/v/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
 [![Total Downloads](https://img.shields.io/packagist/dt/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
 [![License](https://img.shields.io/packagist/l/sorge-it/phpunit-pest-html-assertions)](LICENSE.md)
+[![PHP Version](https://img.shields.io/packagist/php-v/sorge-it/phpunit-pest-html-assertions)](composer.json)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](phpstan.neon)
 
 Check rendered HTML with CSS selectors, never as a string. Built for tests that AI coding agents
 write and run: in Laravel, Livewire, Symfony and TYPO3.
@@ -15,50 +17,13 @@ expect($this->get('/cart'))
     ->not->toHaveSelector('[data-errors]');
 ```
 
-**Works with:** PHPUnit · Pest · Laravel · Livewire · Symfony · TYPO3 · PSR-7 · Laravel Boost · PHPStan · Rector
+**Works with:** PHPUnit · Pest · Laravel · Livewire · Symfony · TYPO3 · PSR-7 · Laravel Boost · Claude Code · PHPStan · Rector
 
-## Why
+![PHPStan reports a check of markup as a string; the check by selector fails and shows the region](https://raw.githubusercontent.com/sorge-it/phpunit-pest-html-assertions/main/demo/output/demo.gif)
 
-Coding agents write a large share of our tests. Left alone, they check HTML the way it is easiest to
-type: `assertSee('<span class="dot">')`, a regular expression over the markup. Those tests fail when
-one more `<span>` wraps a dot, though the page looks the same. And they pass when the text they look
-for sits only in an attribute or a script.
-
-This package asks the DOM instead. `symfony/dom-crawler` parses the page with `Dom\HTMLDocument`, as
-a browser does, and every check selects with CSS.
-
-## Built for coding agents
-
-Each part of the package acts at one step of the loop in which an agent writes a test:
-
-| Step | Part |
-|---|---|
-| Before the agent writes | A [Laravel Boost](#laravel-boost) skill gives the agent the checks and the rules for selectors. |
-| When the agent checks its work | The [PHPStan rules](#phpstan) `html.markupAsString` and `html.classAsString` report a check of markup or of a class as a string and say what to use instead. |
-| When a test fails | The [message](#when-a-check-fails) names the region, what was asked, what was found, and shows the HTML of the region. The agent can fix the test without a browser. |
-| In an existing suite | A [Rector rule](#rector) rewrites the mechanical forms of crawler code. |
-
-## Parts
-
-The package has four parts:
-
-| Part | Namespace | What it holds |
-|---|---|---|
-| PHPUnit | `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit` | the constraints, `Html` (a page or a region of it) and the `AssertsHtml` trait |
-| Pest | `SorgeIt\PhpunitPestHtmlAssertions\Pest` | the expectations and the function `html()` |
-| PHPStan | `SorgeIt\PhpunitPestHtmlAssertions\PHPStan` | the rules `html.markupAsString` and `html.classAsString`, which report a check of markup or of a class as a string |
-| Rector | `SorgeIt\PhpunitPestHtmlAssertions\Rector` | a rule that rewrites the mechanical forms of crawler code |
-
-## Requirements
-
-- PHP 8.3, 8.4 or 8.5
-- PHPUnit 12.5 or 13
-- Pest 4 or 5, optional, for the expectations
-- the PHP extensions `dom` and `mbstring`
-- Symfony DomCrawler and CssSelector 7.4 or 8.1
-
-The CI tests three stacks: PHP 8.3 with PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4; PHP 8.4 with
-the newest versions; PHP 8.5 with the versions of `composer.lock`.
+PHPStan reports a check of markup as a string. The check by selector fails, names the region,
+gives the reason and shows the HTML of the region, at the line of the test. The demo is recorded
+from the app in [`demo/`](demo).
 
 ## Installation
 
@@ -102,6 +67,60 @@ final class CartTest extends TestCase
 Every method of the trait starts with `assertHtml`. So the trait also works in a Symfony
 `WebTestCase`, which has its own `assertSelectorExists()` and similar methods.
 
+## Why
+
+Coding agents write many tests. Without help, they check HTML the way it is easiest to type:
+`assertSee('<span class="dot">')`, a regular expression over the markup. Those tests fail when one
+more `<span>` wraps a dot, though the page looks the same. And they pass when the text they look for
+sits only in an attribute or a script.
+
+This package reads the DOM instead. `symfony/dom-crawler` parses the page with `Dom\HTMLDocument`, as
+a browser does, and every check selects with CSS.
+
+## Compared with
+
+| Tool | What it checks | The difference |
+|---|---|---|
+| `assertSee()`, `assertSeeHtml()`, `toContain()` | a string | passes on text in an attribute or a script, fails when the markup around the text changes |
+| Symfony's `assertSelectorTextContains()` and the other `assertSelector…()` methods | CSS selectors | only in a `WebTestCase`, on the client's last response; no regions; the message shows no HTML |
+| `sinnbeck/laravel-dom-assertions` | CSS selectors | Laravel's test responses, views and Livewire components; this package also reads Symfony, TYPO3 and PSR-7 responses and adds PHPStan rules |
+| Laravel Dusk, Pest's browser tests | a real browser | for JavaScript, CSS and clicks; slower. This package checks the HTML the server renders, in a unit or feature test |
+| HTML snapshots | the whole page | fail on every change; an update accepts the whole new page |
+
+## Built for coding agents
+
+The package acts at each step of the loop in which an agent writes a test:
+
+| Step | What acts |
+|---|---|
+| Before the agent writes | A [skill](#for-coding-agents) gives the agent the checks and the rules for selectors: through Laravel Boost, Claude Code or the `skills` CLI. Boost also adds a short guideline to every task. |
+| When the agent checks its work | The [PHPStan rules](#phpstan) `html.markupAsString` and `html.classAsString` report a check of markup or of a class as a string and say what to use instead. |
+| When a test fails | The [message](#when-a-check-fails) names the region, what was asked, what was found, and shows the HTML of the region. It points at the line of the test, not into this package. The agent can fix the test without a browser. |
+| In an existing suite | A [Rector rule](#rector) rewrites the mechanical forms of crawler code. |
+
+## Requirements
+
+- PHP 8.3, 8.4 or 8.5
+- PHPUnit 12.5 or 13
+- Pest 4 or 5, optional, for the expectations
+- the PHP extensions `dom` and `mbstring`
+- Symfony DomCrawler and CssSelector 7.4 or 8.1
+- Composer 2.1 or later
+
+The CI tests three stacks: PHP 8.3 with PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4; PHP 8.4 with
+the newest versions; PHP 8.5 with the versions of `composer.lock`.
+
+## Namespaces
+
+| Namespace | What it holds |
+|---|---|
+| `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit` | the constraints, `Html` (a page or a region of it) and the `AssertsHtml` trait |
+| `SorgeIt\PhpunitPestHtmlAssertions\Pest` | the expectations and the function `html()` |
+| `SorgeIt\PhpunitPestHtmlAssertions\PHPStan` | the rules `html.markupAsString` and `html.classAsString`, which report a check of markup or of a class as a string |
+| `SorgeIt\PhpunitPestHtmlAssertions\Rector` | a rule that rewrites the mechanical forms of crawler code |
+
+The guideline and the skill for coding agents lie in `resources/boost/`.
+
 ## What a check reads
 
 Each check takes one of these:
@@ -133,7 +152,7 @@ Each row gives the call and the sentence of its message when it fails, after the
 | `toHaveSelector('[data-cart]')` | `assertHtmlSelectorExists` | has a node matching "[data-cart]" |
 | — | `assertHtmlSelectorNotExists` | does not have a node matching "[data-cart]" |
 | `toHaveSelectorCount('li', 3)` | `assertHtmlSelectorCount` | has 3 nodes matching "li" |
-| `toHaveSelectorCountAtLeast('li', 1)` | `assertHtmlSelectorCountAtLeast` | has at least 1 nodes matching "li" |
+| `toHaveSelectorCountAtLeast('li', 2)` | `assertHtmlSelectorCountAtLeast` | has at least 2 nodes matching "li" |
 | `toHaveSelectorText('h1', 'Orders')` | `assertHtmlSelectorTextSame` | has one node matching "h1" with the text "Orders" |
 | `toHaveSelectorTextContaining('h1', 'Ord')` | `assertHtmlSelectorTextContains` | has one node matching "h1" whose text contains "Ord" |
 | `toHaveAnySelectorText('li', 'Apple')` | `assertHtmlAnySelectorTextSame` | has a node matching "li" with the text "Apple" |
@@ -145,7 +164,7 @@ Each row gives the call and the sentence of its message when it fails, after the
 | `toHaveSelectorClass('[data-status]', 'bg-red-500')` | `assertHtmlSelectorClass` | has one node matching "[data-status]" with the class "bg-red-500" |
 | `toHaveText('Apple Pear')` | `assertHtmlTextSame` | has the text "Apple Pear" |
 | `toHaveTextContaining('Apple')` | `assertHtmlTextContains` | has a text that contains "Apple" |
-| `toHaveTextCount('Apple', 1)` | `assertHtmlTextCount` | has the text "Apple" 1 times |
+| `toHaveTextCount('Apple', 2)` | `assertHtmlTextCount` | has the text "Apple" 2 times |
 | `toAppearBefore('[data-head]', '[data-body]')` | `assertHtmlSelectorBefore` | has the node matching "[data-head]" before the node matching "[data-body]" |
 | `toHaveTitle('Orders')` | `assertHtmlPageTitleSame` | has the title "Orders" |
 | `toHaveInputValue('email', 'anna@example.com')` | `assertHtmlInputValueSame` | has one field named "email" with the value "anna@example.com" |
@@ -278,9 +297,13 @@ NotOneNode: (page) > [data-cart]: a check of one node needs exactly one match. T
 
 `dump()` and `dd()` of Pest show the same path and region.
 
+A failure points at the line of the test. The trace leaves out the frames of this package, as it
+leaves out those of PHPUnit. For a bug report, run the test with `HTML_ASSERTIONS_SHOW_FRAMES=1`
+set in the shell, not in `phpunit.xml`: the trace then keeps them.
+
 ## Which selector
 
-1. The element, its role, `aria-*`, its label or its visible text.
+1. The tag, its role, `aria-*`, its label or its visible text.
 2. A `data-*` marker: the functional marker that the app (Alpine, scripts) and the tests share. A CSS
    class is for the look, not for a selector.
 3. A class is a value to check (`toHaveSelectorClass('[data-status]', 'bg-red-500')`), not the
@@ -416,31 +439,50 @@ change slightly: `texts()` leaves out a script, a style or a `template` inside a
 
 Add it to the `rector.php` of a project for a migration: `->withRules([CrawlerToHtmlRector::class])`.
 
-## Laravel Boost
+## For coding agents
 
-The package ships a skill for [Laravel Boost](https://github.com/laravel/boost) in
-`resources/boost/skills/`. Boost finds it in every direct dependency and gives it to your coding
-agent, so the agent writes these checks instead of string checks.
+The package ships a skill in the [Agent Skills](https://agentskills.io) format and a short guideline
+for Laravel Boost. With them, an agent writes these checks instead of string checks.
+
+**Laravel Boost** lists the package on `php artisan boost:install`, also as a `require-dev`
+dependency. Pick it in the list of third-party guidelines and skills, or add it to `packages` in
+`boost.json`. Boost then writes the guideline into the guideline file of the agent, for example
+`CLAUDE.md`, and installs the skill:
+
+```json
+{
+    "packages": ["sorge-it/phpunit-pest-html-assertions"]
+}
+```
+
+**Claude Code** installs the skill as a plugin of this repository:
+
+```
+/plugin marketplace add sorge-it/phpunit-pest-html-assertions
+/plugin install phpunit-pest-html-assertions@sorge-it
+```
+
+**Other agents** (Cursor, Codex, GitHub Copilot and more) install it with the
+[`skills` CLI](https://github.com/vercel-labs/skills):
+
+```sh
+npx skills add sorge-it/phpunit-pest-html-assertions
+```
 
 ## Not in scope
 
 - CSS: whether a rule takes effect is a question for a browser test (`getComputedStyle`).
 - Accessibility: `axe-core` in a browser test.
-- HTML snapshots: a snapshot takes every change as the new truth.
+- HTML snapshots: see [Compared with](#compared-with).
 
 ## Development
 
-```sh
-composer test   # Pint and Rector as a dry run, PHPStan at max, type coverage 100 %, the test suites
-composer lint   # Rector, then Pint
-```
-
-Bug reports and pull requests are welcome on
-[GitHub](https://github.com/sorge-it/phpunit-pest-html-assertions/issues).
+A problem comes as a pull request that fixes it, not as an issue. How to run the checks of the
+package: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 
-Please report a security problem by email to github@sorge-it.de, not in a public issue.
+Report a vulnerability privately through GitHub. See [SECURITY.md](SECURITY.md).
 
 ## License
 

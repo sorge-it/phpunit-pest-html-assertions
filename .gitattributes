@@ -1,9 +1,15 @@
 * text=auto eol=lf
 
+/.claude-plugin export-ignore
 /.github export-ignore
 /.gitattributes export-ignore
 /.gitignore export-ignore
+/CODE_OF_CONDUCT.md export-ignore
+/CONTRIBUTING.md export-ignore
+/SECURITY.md export-ignore
 /composer.lock export-ignore
+/context7.json export-ignore
+/demo export-ignore
 /fixtures export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml export-ignore

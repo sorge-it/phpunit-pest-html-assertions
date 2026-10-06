@@ -1,0 +1,13 @@
+{
+    "name": "phpunit-pest-html-assertions",
+    "description": "Check rendered HTML in PHPUnit and Pest tests with CSS selectors, never as a string: the skill of sorge-it/phpunit-pest-html-assertions.",
+    "author": {
+        "name": "Stefan Sorge",
+        "url": "https://github.com/sorge-it"
+    },
+    "homepage": "https://github.com/sorge-it/phpunit-pest-html-assertions",
+    "repository": "https://github.com/sorge-it/phpunit-pest-html-assertions",
+    "license": "MIT",
+    "keywords": ["php", "phpunit", "pest", "html", "testing", "css-selector"],
+    "skills": ["./resources/boost/skills/"]
+}

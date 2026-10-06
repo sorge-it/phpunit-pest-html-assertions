@@ -1,0 +1,9 @@
+# Level 0: PHPStan knows neither the expectations Pest adds nor its higher-order chain.
+includes:
+    - vendor/sorge-it/phpunit-pest-html-assertions/extension.neon
+
+parameters:
+    level: 0
+    paths:
+        - tests
+    tmpDir: .phpstan
