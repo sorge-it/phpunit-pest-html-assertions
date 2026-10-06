@@ -1,0 +1,14 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+    "projectTitle": "phpunit-pest-html-assertions",
+    "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string.",
+    "folders": [],
+    "excludeFolders": ["demo", "fixtures", "stubs", "tests", "vendor"],
+    "excludeFiles": ["CHANGELOG.md", "CODE_OF_CONDUCT.md", "SECURITY.md"],
+    "rules": [
+        "Check rendered HTML with a CSS selector, never as a string or a regular expression.",
+        "Select by tag, role, aria-*, label or text, then by a data-* marker; a class is a value to check with toHaveSelectorClass().",
+        "A check of one node needs exactly one match; narrow to a region with within().",
+        "Give a check its reason as the last argument; after the optional value of toHaveSelectorAttribute(), pass it by name: message: '…'."
+    ]
+}
