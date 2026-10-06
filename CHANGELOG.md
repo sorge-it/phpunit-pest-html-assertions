@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.2
+
+### Fixed
+
+- A node inside a `<template>` matches no selector, as in a browser. Before, a selector found it,
+  though the page does not show it: a check could pass on markup that only a script would render.
+  `attributeValues()` leaves out its attributes too.
+
+### Documentation
+
+- The README opens with why the package exists, with a string check that stays green on a broken
+  page. The demo shows the same case.
+
+### Upgrade
+
+- A check that found its node only inside a `<template>` now finds none. Check the node the page
+  shows, or the `<template>` element itself.
+
 ## 1.4.1
 
 ### Changed

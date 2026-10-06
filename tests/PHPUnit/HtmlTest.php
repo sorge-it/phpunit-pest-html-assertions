@@ -95,6 +95,16 @@ final class HtmlTest extends TestCase
         self::assertNotContains('/out?u=1', $values);
     }
 
+    public function test_a_node_in_a_template_is_not_part_of_the_page(): void
+    {
+        $html = Html::of('<main><p data-total></p><template><p data-total>42.00 EUR</p><a data-in="template">x</a></template></main>');
+
+        self::assertSame([''], $html->texts('[data-total]'));
+        self::assertSame(1, $html->count('template'));
+        self::assertSame(0, $html->within('template')->count('p'));
+        self::assertNotContains('template', $html->attributeValues());
+    }
+
     public function test_within_stops_where_the_region_is_missing_or_there_twice(): void
     {
         foreach (['[data-here]' => 0, '[data-name]' => 2] as $selector => $count) {

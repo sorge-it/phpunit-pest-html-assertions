@@ -153,7 +153,7 @@ final readonly class Html
         $values = [];
 
         foreach ($this->roots() as $root) {
-            foreach ([$root, ...$this->elementsBelow($root)] as $element) {
+            foreach ([$root, ...array_filter($this->elementsBelow($root), fn (DOMElement $element): bool => ! $this->isInTemplate($element))] as $element) {
                 foreach ($element->attributes ?? [] as $attribute) {
                     $values[] = $attribute->value;
                 }
@@ -188,7 +188,7 @@ final readonly class Html
 
         $matches = array_values(array_filter(
             iterator_to_array($this->document->filter($selector), false),
-            fn (DOMNode $node): bool => $node instanceof DOMElement,
+            fn (DOMNode $node): bool => $node instanceof DOMElement && ! $this->isInTemplate($node),
         ));
 
         $scope = $this->scope;
@@ -236,6 +236,18 @@ final readonly class Html
         return $response->baseResponse instanceof StreamedResponse
             ? $response->streamedContent()
             : (string) $response->baseResponse->getContent();
+    }
+
+    /** A node in a `template` is not part of the page: a browser renders it only when a script copies it. */
+    private function isInTemplate(DOMNode $node): bool
+    {
+        for ($parent = $node->parentNode; $parent instanceof DOMNode; $parent = $parent->parentNode) {
+            if ($parent instanceof DOMElement && mb_strtolower($parent->localName ?? '') === 'template') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isBelow(DOMNode $node, DOMElement $scope): bool
