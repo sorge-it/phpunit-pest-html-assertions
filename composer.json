@@ -1,7 +1,7 @@
 {
     "name": "sorge-it/phpunit-pest-html-assertions",
     "description": "HTML assertions for PHPUnit and Pest: check rendered HTML with CSS selectors, never as a string. With PHPStan rules, a Rector rule and a skill for AI coding agents.",
-    "type": "library",
+    "type": "phpstan-extension",
     "license": "MIT",
     "keywords": ["phpunit", "pest", "html", "dom", "css-selector", "assertions", "testing", "laravel", "livewire", "blade", "symfony", "typo3", "dom-crawler", "phpstan", "phpstan-extension", "rector", "tailwind", "laravel-boost", "ai-agents", "agent-skills", "claude-code"],
     "homepage": "https://github.com/sorge-it/phpunit-pest-html-assertions",
