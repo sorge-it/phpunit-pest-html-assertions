@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+
+- Each check takes a last, optional parameter `string $message = ''`: the 23 check methods of the
+  trait `AssertsHtml` (`assertHtml()` and `assertHtmlNot()` had it before), the 22 expectations of
+  Pest and `eachMatch`. A failure shows the message first, as PHPUnit does. `NotOneNode` and
+  `NotAPage` show it first too. Without a message, each failure keeps its text byte for byte.
+- Under `->not`, Pest lists the message among its arguments, without the region. See the README,
+  section One node or none.
+
+### Fixed
+
+- A value that is not a page stops a check with `NotAPage`, a `LogicException` like `NotOneNode`.
+  `Html::of()` and `html()` throw it too. Before, they failed with an `AssertionFailedError`, and
+  Pest's `->not` turned that into a pass. PHPUnit now counts it as an error, not as a failure.
+- A missing region stops the test, also under `->not`. `within()` and `frame()` throw `NotOneNode`
+  where the selector finds no node or more than one. `frame()` throws `NotAPage` for a frame without
+  `srcdoc`. `eachMatch()` throws the new `NoMatch` where no node matches. Before, each failed with an
+  `AssertionFailedError`, and `->not` turned that into a pass.
+- `->not->eachMatch()` stops with a `LogicException`. Before, it passed where one match failed.
+
+### Upgrade
+
+- A call needs no change for the message. The parameter is optional and comes last.
+- A test with `->not->eachMatch()` turns the checks in the callback around instead.
+- A subclass that overrides a method of `AssertsHtml` adds `string $message = ''` as its last
+  parameter. Without it, PHP stops with "must be compatible".
+- Code that expects or catches an `AssertionFailedError` for a value that is not a page expects
+  `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage`.
+- A test that expects a failure for a missing region expects
+  `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode`,
+  `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage` or
+  `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NoMatch`. PHPUnit counts these as errors.
+- `frame()` counts as one assertion, not two.
+
 ## 1.2.0
 
 ### Added

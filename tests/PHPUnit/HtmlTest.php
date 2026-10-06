@@ -7,10 +7,10 @@ namespace SorgeIt\PhpunitPestHtmlAssertions\Tests\PHPUnit;
 use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use Nyholm\Psr7\Response as Psr7Response;
-use PHPUnit\Framework\AssertionFailedError;
-use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage;
 use SorgeIt\PhpunitPestHtmlAssertions\Tests\Page;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,7 +40,7 @@ final class HtmlTest extends TestCase
 
     public function test_it_names_the_kinds_it_reads_where_it_gets_another(): void
     {
-        $this->expectException(AssertionFailedError::class);
+        $this->expectException(NotAPage::class);
         $this->expectExceptionMessage('a string, an Html, a Crawler, a TestResponse, a TestView, a TestComponent, a Livewire Testable, a PSR-7 response or a response of Symfony, not int');
 
         Html::of(42);
@@ -95,19 +95,19 @@ final class HtmlTest extends TestCase
         self::assertNotContains('/out?u=1', $values);
     }
 
-    public function test_within_fails_where_the_region_is_missing_or_there_twice(): void
+    public function test_within_stops_where_the_region_is_missing_or_there_twice(): void
     {
-        foreach (['[data-here]', '[data-name]'] as $selector) {
+        foreach (['[data-here]' => 0, '[data-name]' => 2] as $selector => $count) {
             try {
                 Html::of(Page::HTML)->within($selector);
-            } catch (ExpectationFailedException) {
+            } catch (NotOneNode $notOneNode) {
+                self::assertStringStartsWith(sprintf('(page): within() needs exactly one match. The selector "%s" finds %d nodes.', $selector, $count), $notOneNode->getMessage());
+
                 continue;
             }
 
             self::fail('within() passed on '.$selector);
         }
-
-        $this->addToAssertionCount(1);
     }
 
     public function test_frame_reads_the_document_in_the_srcdoc(): void
@@ -118,11 +118,20 @@ final class HtmlTest extends TestCase
         self::assertSame('(page) > [data-mail] > srcdoc', $mail->path());
     }
 
-    public function test_frame_fails_on_a_node_without_srcdoc(): void
+    public function test_frame_stops_on_a_node_without_srcdoc(): void
     {
-        $this->expectException(AssertionFailedError::class);
+        $this->expectException(NotAPage::class);
+        $this->expectExceptionMessage('The frame (page) > [data-head] has no srcdoc, so it holds no page.');
 
         Html::of(Page::HTML)->frame('[data-head]');
+    }
+
+    public function test_frame_stops_where_the_frame_is_missing(): void
+    {
+        $this->expectException(NotOneNode::class);
+        $this->expectExceptionMessage('(page): frame() needs exactly one match. The selector "iframe[data-here]" finds 0 nodes.');
+
+        Html::of(Page::HTML)->frame('iframe[data-here]');
     }
 
     public function test_it_reads_texts_raw_texts_and_attributes_in_the_order_of_the_page(): void
