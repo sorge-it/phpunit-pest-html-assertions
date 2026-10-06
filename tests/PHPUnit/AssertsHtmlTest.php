@@ -21,6 +21,7 @@ use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\Not;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\RegionCheck;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage;
 use SorgeIt\PhpunitPestHtmlAssertions\Tests\Page;
 
 /** Each check of the trait once green and once red, on the same page. */
@@ -59,34 +60,34 @@ final class AssertsHtmlTest extends TestCase
         yield 'an empty node' => [fn (string $page) => self::assertHtmlSelectorEmpty($page, '[data-empty]')];
     }
 
-    /** @return iterable<string, array{Closure(string): void}> */
+    /** @return iterable<string, array{Closure(string, string=): void}> */
     public static function failing(): iterable
     {
-        yield 'no such node' => [fn (string $page) => self::assertHtmlSelectorExists($page, '[data-here]')];
-        yield 'a node that is there' => [fn (string $page) => self::assertHtmlSelectorNotExists($page, '[data-people]')];
-        yield 'another count' => [fn (string $page) => self::assertHtmlSelectorCount($page, '[data-name]', 3)];
-        yield 'too few' => [fn (string $page) => self::assertHtmlSelectorCountAtLeast($page, '[data-name]', 3)];
-        yield 'another text' => [fn (string $page) => self::assertHtmlSelectorTextSame($page, 'h1', 'Review')];
-        yield 'a part not in the text' => [fn (string $page) => self::assertHtmlSelectorTextContains($page, 'h1', 'Montag')];
-        yield 'a text of no node' => [fn (string $page) => self::assertHtmlAnySelectorTextSame($page, '[data-name]', 'Clara')];
-        yield 'a part of no text' => [fn (string $page) => self::assertHtmlAnySelectorTextContains($page, '[data-name]', 'Cla')];
-        yield 'another attribute value' => [fn (string $page) => self::assertHtmlSelectorAttribute($page, '[data-link]', 'href', '/in')];
-        yield 'a missing attribute' => [fn (string $page) => self::assertHtmlSelectorAttribute($page, '[data-cancel]', 'disabled')];
-        yield 'a part not in the attribute' => [fn (string $page) => self::assertHtmlSelectorAttributeContains($page, '[data-link]', 'href', 'u=2')];
-        yield 'no attribute of that name' => [fn (string $page) => self::assertHtmlSelectorAttributeNamed($page, '[data-head]', 'wire:poll')];
-        yield 'a missing class' => [fn (string $page) => self::assertHtmlSelectorClass($page, '[data-name="Ben"]', 'bg-blue-500')];
-        yield 'another text of a region' => [fn (string $page) => self::assertHtmlTextSame(Html::of($page)->within('[data-people]'), 'Anna Ben')];
+        yield 'no such node' => [fn (string $page, string $message = '') => self::assertHtmlSelectorExists($page, '[data-here]', $message)];
+        yield 'a node that is there' => [fn (string $page, string $message = '') => self::assertHtmlSelectorNotExists($page, '[data-people]', $message)];
+        yield 'another count' => [fn (string $page, string $message = '') => self::assertHtmlSelectorCount($page, '[data-name]', 3, $message)];
+        yield 'too few' => [fn (string $page, string $message = '') => self::assertHtmlSelectorCountAtLeast($page, '[data-name]', 3, $message)];
+        yield 'another text' => [fn (string $page, string $message = '') => self::assertHtmlSelectorTextSame($page, 'h1', 'Review', $message)];
+        yield 'a part not in the text' => [fn (string $page, string $message = '') => self::assertHtmlSelectorTextContains($page, 'h1', 'Montag', $message)];
+        yield 'a text of no node' => [fn (string $page, string $message = '') => self::assertHtmlAnySelectorTextSame($page, '[data-name]', 'Clara', $message)];
+        yield 'a part of no text' => [fn (string $page, string $message = '') => self::assertHtmlAnySelectorTextContains($page, '[data-name]', 'Cla', $message)];
+        yield 'another attribute value' => [fn (string $page, string $message = '') => self::assertHtmlSelectorAttribute($page, '[data-link]', 'href', '/in', $message)];
+        yield 'a missing attribute' => [fn (string $page, string $message = '') => self::assertHtmlSelectorAttribute($page, '[data-cancel]', 'disabled', message: $message)];
+        yield 'a part not in the attribute' => [fn (string $page, string $message = '') => self::assertHtmlSelectorAttributeContains($page, '[data-link]', 'href', 'u=2', $message)];
+        yield 'no attribute of that name' => [fn (string $page, string $message = '') => self::assertHtmlSelectorAttributeNamed($page, '[data-head]', 'wire:poll', $message)];
+        yield 'a missing class' => [fn (string $page, string $message = '') => self::assertHtmlSelectorClass($page, '[data-name="Ben"]', 'bg-blue-500', $message)];
+        yield 'another text of a region' => [fn (string $page, string $message = '') => self::assertHtmlTextSame(Html::of($page)->within('[data-people]'), 'Anna Ben', $message)];
         // A script is no text a reader gets.
-        yield 'the text of a script' => [fn (string $page) => self::assertHtmlTextContains($page, 'alert(1)')];
-        yield 'a text once' => [fn (string $page) => self::assertHtmlTextCount($page, 'Review', 1)];
-        yield 'the other order' => [fn (string $page) => self::assertHtmlSelectorBefore($page, '[data-body]', '[data-head]')];
-        yield 'another title' => [fn (string $page) => self::assertHtmlPageTitleSame($page, 'Another page')];
-        yield 'another value' => [fn (string $page) => self::assertHtmlInputValueSame($page, 'email', 'ben@example.test')];
-        yield 'an unchecked box' => [fn (string $page) => self::assertHtmlCheckboxChecked($page, 'input[name="email"]')];
-        yield 'another option' => [fn (string $page) => self::assertHtmlSelectedOption($page, '[data-day]', 'mo')];
-        yield 'an enabled button' => [fn (string $page) => self::assertHtmlSelectorDisabled($page, '[data-cancel]')];
-        yield 'a link to elsewhere' => [fn (string $page) => self::assertHtmlLink($page, 'Next', '/in')];
-        yield 'a node with text' => [fn (string $page) => self::assertHtmlSelectorEmpty($page, 'h1')];
+        yield 'the text of a script' => [fn (string $page, string $message = '') => self::assertHtmlTextContains($page, 'alert(1)', $message)];
+        yield 'a text once' => [fn (string $page, string $message = '') => self::assertHtmlTextCount($page, 'Review', 1, $message)];
+        yield 'the other order' => [fn (string $page, string $message = '') => self::assertHtmlSelectorBefore($page, '[data-body]', '[data-head]', $message)];
+        yield 'another title' => [fn (string $page, string $message = '') => self::assertHtmlPageTitleSame($page, 'Another page', $message)];
+        yield 'another value' => [fn (string $page, string $message = '') => self::assertHtmlInputValueSame($page, 'email', 'ben@example.test', $message)];
+        yield 'an unchecked box' => [fn (string $page, string $message = '') => self::assertHtmlCheckboxChecked($page, 'input[name="email"]', $message)];
+        yield 'another option' => [fn (string $page, string $message = '') => self::assertHtmlSelectedOption($page, '[data-day]', 'mo', $message)];
+        yield 'an enabled button' => [fn (string $page, string $message = '') => self::assertHtmlSelectorDisabled($page, '[data-cancel]', $message)];
+        yield 'a link to elsewhere' => [fn (string $page, string $message = '') => self::assertHtmlLink($page, 'Next', '/in', $message)];
+        yield 'a node with text' => [fn (string $page, string $message = '') => self::assertHtmlSelectorEmpty($page, 'h1', $message)];
     }
 
     /** @return iterable<string, array{Closure(string): void}> */
@@ -109,13 +110,85 @@ final class AssertsHtmlTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    /** @param Closure(string): void $check */
+    /** @param Closure(string, string=): void $check */
     #[DataProvider('failing')]
     public function test_it_fails_where_the_page_does_not(Closure $check): void
     {
         $this->expectException(ExpectationFailedException::class);
 
         $check(Page::HTML);
+    }
+
+    /** @param Closure(string, string): void $check */
+    #[DataProvider('failing')]
+    public function test_a_failure_shows_the_message_of_the_test_before_its_own(Closure $check): void
+    {
+        try {
+            $check(Page::HTML, 'The cart shows what the customer chose.');
+        } catch (ExpectationFailedException $expectationFailedException) {
+            self::assertStringStartsWith("The cart shows what the customer chose.\nFailed asserting that (page", $expectationFailedException->getMessage());
+
+            return;
+        }
+
+        self::fail('The check passed.');
+    }
+
+    public function test_a_failure_without_a_message_keeps_its_text(): void
+    {
+        try {
+            // A whole page: the parsers of Symfony 7.4 and 8.1 add a missing head differently.
+            self::assertHtmlSelectorCount('<html><head></head><body><ul><li>a</li></ul></body></html>', 'li', 2);
+        } catch (ExpectationFailedException $expectationFailedException) {
+            self::assertSame(
+                "Failed asserting that (page) has 2 nodes matching \"li\".\nThe selector \"li\" finds 1 nodes.\n\nIn (page):\n  <html>\n    <head>\n    <body>\n      <ul>\n        <li>\n          a",
+                $expectationFailedException->getMessage(),
+            );
+
+            return;
+        }
+
+        self::fail('The check passed.');
+    }
+
+    public function test_a_check_of_one_node_shows_the_message_of_the_test_before_its_own(): void
+    {
+        try {
+            self::assertHtmlSelectorTextSame(Page::HTML, '[data-name]', 'Anna Example', 'The total shows the sum.');
+        } catch (NotOneNode $notOneNode) {
+            self::assertStringStartsWith("The total shows the sum.\n(page): a check of one node needs exactly one match.", $notOneNode->getMessage());
+            self::assertNotInstanceOf(NotOneNode::class, $notOneNode->getPrevious(), 'PHPUnit prints a previous exception a second time.');
+
+            return;
+        }
+
+        self::fail('The check passed on two nodes.');
+    }
+
+    public function test_a_check_of_one_node_without_a_message_keeps_its_text(): void
+    {
+        try {
+            self::assertHtmlSelectorTextSame(Page::HTML, '[data-name]', 'Anna Example');
+        } catch (NotOneNode $notOneNode) {
+            self::assertStringStartsWith('(page): a check of one node needs exactly one match.', $notOneNode->getMessage());
+
+            return;
+        }
+
+        self::fail('The check passed on two nodes.');
+    }
+
+    public function test_a_value_that_is_not_a_page_shows_the_message_of_the_test_first(): void
+    {
+        try {
+            self::assertHtmlSelectorExists(42, 'p', 'The page renders.');
+        } catch (NotAPage $notaPage) {
+            self::assertStringStartsWith("The page renders.\nA check of HTML reads ", $notaPage->getMessage());
+
+            return;
+        }
+
+        self::fail('The check passed on a number.');
     }
 
     public function test_a_failure_names_the_path_what_was_found_and_the_region(): void

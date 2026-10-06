@@ -14,6 +14,7 @@ use Livewire\Features\SupportTesting\Testable;
 use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorCount;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\One;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -58,28 +59,31 @@ final readonly class Html
             $value instanceof Testable => self::parse($value->html()),
             $value instanceof ResponseInterface => self::parse((string) $value->getBody()),
             $value instanceof Response => self::parse((string) $value->getContent()),
-            default => Assert::fail(sprintf(
+            default => throw new NotAPage(sprintf(
                 'A check of HTML reads a string, an Html, a Crawler, a TestResponse, a TestView, a TestComponent, a Livewire Testable, a PSR-7 response or a response of Symfony, not %s.',
                 get_debug_type($value),
             )),
         };
     }
 
-    /** The one node the selector finds, as a region of its own: zero or two are a failure, not an empty region. */
+    /**
+     * The one node the selector finds, as a region of its own. Zero or two stop
+     * the test with `NotOneNode`, which no `->not` turns into a pass.
+     */
     public function within(string $selector): self
     {
-        Assert::assertThat($this, new HasSelectorCount($selector, 1));
-
-        return new self($this->document, $this->elements($selector)[0], [...$this->path, $selector]);
+        return $this->region($selector, 'within()');
     }
 
-    /** The document in the `srcdoc` of the one frame the selector finds. */
+    /** The document in the `srcdoc` of the one frame the selector finds. A frame without it is `NotAPage`. */
     public function frame(string $selector): self
     {
-        $frame = $this->within($selector);
-        $document = $frame->scope?->getAttribute('srcdoc');
+        $frame = $this->region($selector, 'frame()');
+        $document = $frame->scope?->getAttribute('srcdoc') ?? '';
 
-        Assert::assertNotEmpty($document, sprintf('The frame %s has no srcdoc.', $frame->path()));
+        if ($document === '') {
+            throw new NotAPage(sprintf('The frame %s has no srcdoc, so it holds no page.', $frame->path()));
+        }
 
         return new self(new Crawler($document), null, [...$frame->path, 'srcdoc']);
     }
@@ -243,6 +247,16 @@ final readonly class Html
         }
 
         return false;
+    }
+
+    private function region(string $selector, string $check): self
+    {
+        $element = One::element($this, $selector, $check);
+
+        // A region counts as one assertion, as it did when it asserted the count.
+        Assert::assertThat($this, new HasSelectorCount($selector, 1));
+
+        return new self($this->document, $element, [...$this->path, $selector]);
     }
 
     /** @return list<DOMElement> */

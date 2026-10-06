@@ -14,14 +14,15 @@ use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
  */
 final class One
 {
-    public static function element(Html $html, string $selector): DOMElement
+    public static function element(Html $html, string $selector, string $check = 'a check of one node'): DOMElement
     {
         $elements = $html->elements($selector);
 
         if (count($elements) !== 1) {
             throw new NotOneNode(sprintf(
-                "%s: a check of one node needs exactly one match. %s\n\nIn %s:\n%s",
+                "%s: %s needs exactly one match. %s\n\nIn %s:\n%s",
                 $html->path(),
+                $check,
                 self::count($html, $selector),
                 $html->path(),
                 $html->excerpt(),

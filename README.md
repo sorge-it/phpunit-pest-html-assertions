@@ -114,7 +114,8 @@ Each check takes one of these:
 - a Symfony `Response`;
 - an `Html` of this package.
 
-The package tells the kinds apart by class. None of their frameworks is a dependency.
+The package tells the kinds apart by class. None of their frameworks is a dependency. Another value
+stops the check with `NotAPage`, also under `->not`: a negated check cannot pass on a wrong value.
 
 A string is parsed as a whole page, the way a browser parses it. A fragment of a table without its
 table loses its tags: `<td>x</td>` alone becomes the text `x`. Wrap such a fragment in `<table>`.
@@ -166,12 +167,49 @@ What the checks read in detail:
 
 A check of one node needs exactly one match. Zero or two matches throw `NotOneNode`, so a test never
 reads the first of several by chance. `->not` does not turn that around: `not->toHaveSelectorText()`
-on a node that is not there fails instead of passing. To say that no node is there, use
-`not->toHaveSelector()`.
+on a node that is not there stops with an error. It does not pass. To say that no node is there,
+use `not->toHaveSelector()`.
 
-`->not` in Pest turns a check around, and the message is Pest's own: "Expecting … not to have
-selector …", without the region. `assertHtmlNot()` of the PHPUnit trait keeps the message of this
-package: "(page) does not have a node matching …", with the region.
+`->not` in Pest turns a check around. Pest then writes its own text, for example
+`Expecting … not to have selector '[data-cart]' 'The cart is empty after checkout.'.` The text lists
+each argument, also the message of the test, but not the region. `assertHtmlNot()` of the PHPUnit
+trait keeps the text of this package, with the region. To give the reason and the region in Pest,
+count zero nodes: `toHaveSelectorCount('[data-cart]', 0, 'The cart is empty after checkout.')`.
+
+`within()`, `frame()` and `eachMatch()` find the region that the checks after them, or in the
+callback of `eachMatch()`, read. A missing region stops the test, also under `->not`: `within()` and
+`frame()` with `NotOneNode`, a frame without `srcdoc` with `NotAPage`, `eachMatch()` with `NoMatch`.
+`->not->eachMatch()` stops with a `LogicException`: it would pass where one match fails. Turn the
+checks in the callback around. After `within()` or `frame()`, Pest drops a `->not` before the next
+`within()` or `frame()`. Turn the check after them around.
+
+### The reason for a check
+
+Each check takes a last, optional parameter `string $message = ''`, as the checks of PHPUnit and
+Pest do. Give the reason for the check. Only the test knows it. A failure shows it first, before the
+text of this package:
+
+```php
+expect($response)->toHaveSelectorCount('[data-cart] li', 3, 'The cart keeps the items of the last visit.');
+self::assertHtmlSelectorCount($response, '[data-cart] li', 3, 'The cart keeps the items of the last visit.');
+```
+
+```
+The cart keeps the items of the last visit.
+Failed asserting that (page) has 3 nodes matching "[data-cart] li".
+The selector "[data-cart] li" finds 2 nodes.
+…
+```
+
+- `toHaveSelectorAttribute()` and `assertHtmlSelectorAttribute()` have an optional `$value` before
+  the message. Give the message by name there:
+  `toHaveSelectorAttribute('button', 'disabled', message: 'The form waits for the consent.')`.
+- `NotOneNode`, `NotAPage` and `NoMatch` show the message first too.
+- `eachMatch($selector, $callback, $message)` shows it where no node matches. Each check in the
+  callback takes its own message.
+- `within()` and `frame()` take no message. To give a reason, check the count first:
+  `toHaveSelectorCount($selector, 1, $message)`.
+- Under `->not`, see [One node or none](#one-node-or-none).
 
 ## Regions and values
 
@@ -181,7 +219,7 @@ expects and keeps checking the result, so on an `Html` the methods below chain l
 ```php
 use function SorgeIt\PhpunitPestHtmlAssertions\Pest\html;
 
-// A region: the page holds it exactly once, or the check fails. Every check after it looks inside it.
+// A region: the page holds it exactly once, or the test stops with NotOneNode. Every check after it looks inside it.
 expect(html($page))->within('[data-cart]')
     ->toHaveSelectorCount('li', 3)
     ->not->toHaveSelector('[data-errors]');
@@ -194,7 +232,7 @@ expect(html($page))->texts('[data-cart] [data-name]')->toBe(['Apple', 'Pear']);
 expect(html($page))->rawTexts('[data-note]')->toBe(["Line one\nLine two"]);
 expect(html($page))->attributes('[data-item]', 'data-id')->toBe(['1', '2']);
 
-// The same checks on every match. No match is a failure: a loop over nothing would check nothing.
+// The same checks on every match. No match stops the test with NoMatch: a loop over nothing would check nothing.
 // `:scope` is the match itself.
 expect($page)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSelectorClass(':scope', 'rounded-full'));
 
@@ -202,7 +240,8 @@ expect($page)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSelecto
 expect(html($page)->attributeValues())->each->not->toContain('javascript:');
 ```
 
-A negated check on a region that is not there would always pass. `within()` prevents that.
+A negated check on a region that is not there would always pass. `within()` prevents that: a
+missing region stops the test, also under `->not`.
 
 **A region finds what lies below its element, as `querySelectorAll` of a browser does.** The element
 itself is not a match: in `within('[data-cart]')`, the selector `[data-cart]` finds nothing, and

@@ -51,12 +51,27 @@ Use `toBeEmptyNode`, not `toBeEmpty`: Pest has its own `toBeEmpty`.
 
 The PHPUnit trait `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml` has the same checks as methods, for example `assertHtmlSelectorExists`, `assertHtmlSelectorTextSame` and `assertHtmlSelectorAttribute`.
 
+## The reason for a check
+
+Give the reason for a check as its last parameter `$message`, not as a comment. A failure shows it first. `within()` and `frame()` take no message. After the optional `$value` of `toHaveSelectorAttribute()`, give the message by name:
+
+```php
+expect($response)->toHaveSelectorCount('[data-cart] li', 3, 'The cart keeps the items of the last visit.');
+expect($response)->toHaveSelectorAttribute('button[data-send]', 'disabled', message: 'The form waits for the consent.');
+```
+
 ## One node or none
 
 A check of one node (`toHaveSelectorText`, `toHaveSelectorAttribute`, `toHaveSelectorClass`, `toBeChecked`, `toBeDisabled`, `toBeEmptyNode` and similar) needs exactly one match. Zero or two matches throw `NotOneNode`, also under `->not`. To say that a node is not there, use `not->toHaveSelector()`:
 
 ```php
 expect($response)->not->toHaveSelector('[data-errors]');
+```
+
+Under `->not`, Pest lists the message among the arguments, without the region. To give the reason and the region, count zero nodes:
+
+```php
+expect($response)->toHaveSelectorCount('[data-errors]', 0, 'A valid form shows no error.');
 ```
 
 ## Regions and values
@@ -66,7 +81,7 @@ expect($response)->not->toHaveSelector('[data-errors]');
 ```php
 use function SorgeIt\PhpunitPestHtmlAssertions\Pest\html;
 
-// A region: the page holds it exactly once. Every check after it looks inside it.
+// A region: the page holds it exactly once, or the test stops with NotOneNode. Every check after it looks inside it.
 expect(html($response))->within('[data-cart]')
     ->toHaveSelectorCount('li', 3)
     ->not->toHaveSelector('[data-errors]');
@@ -83,7 +98,7 @@ expect(html($response))->attributes('[data-item]', 'data-id')->toBe(['1', '2']);
 expect(html($response)->attributeValues())->each->not->toContain('javascript:');
 ```
 
-`eachMatch` runs the same checks on every match. No match is a failure.
+`eachMatch` runs the same checks on every match. No match stops the test with `NoMatch`. Never write `->not->eachMatch()`, `->not->within()` or `->not->frame()`: turn the checks inside or after them around.
 
 ```php
 expect($response)->eachMatch('[data-avatar]', fn ($avatar) => $avatar->toHaveSelectorClass(':scope', 'rounded-full'));
