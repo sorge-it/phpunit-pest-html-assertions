@@ -11,9 +11,7 @@ use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Identifier;
 use PhpParser\Node\InterpolatedStringPart;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
@@ -34,39 +32,20 @@ final class MarkupAsStringRule implements Rule
 {
     public const string IDENTIFIER = 'html.markupAsString';
 
-    /** Laravel and Livewire checks that compare markup as a string, whatever they are given. */
-    private const array MARKUP_CHECKS = ['assertseehtml', 'assertdontseehtml', 'assertseehtmlinorder', 'assertseeinorder'];
-
-    /** Laravel checks that compare markup where their second argument turns escaping off. */
-    private const array UNESCAPED_CHECKS = ['assertsee', 'assertdontsee'];
-
-    /** Checks of Pest and PHPUnit that compare or search a string. */
-    private const array STRING_CHECKS = [
-        'tocontain', 'tobe', 'tostartwith', 'toendwith', 'tomatch',
-        'assertstringcontainsstring', 'assertstringnotcontainsstring', 'assertstringstartswith', 'assertstringendswith',
-        'assertmatchesregularexpression', 'assertdoesnotmatchregularexpression',
-    ];
-
-    /** Methods of `Str` and of its `Stringable` that cut or search a string. */
-    private const array STRING_READS = [
-        'after', 'afterlast', 'before', 'beforelast', 'between', 'betweenfirst',
-        'contains', 'containsall', 'startswith', 'endswith', 'substrcount', 'match', 'matchall', 'test',
-    ];
-
-    /** Functions of PHP that search a string. */
-    private const array FUNCTIONS = [
-        'preg_match', 'preg_match_all', 'str_contains', 'str_starts_with', 'str_ends_with',
-        'strpos', 'stripos', 'mb_strpos', 'mb_stripos', 'substr_count', 'mb_substr_count',
-    ];
-
     /**
      * An opening or closing tag (also in a regular expression), an attribute of
      * HTML with its value, or the name of a `data-*` or `wire:` attribute. After
      * `[` it is a CSS selector, not markup.
      */
-    private const string MARKUP = '</?[a-z][a-z0-9-]*(?=[\s/>\[]|$)'
+    public const string MARKUP = '</?[a-z][a-z0-9-]*(?=[\s/>\[]|$)'
         .'|(?<![\w\[-])(?:class|id|href|src|srcset|alt|title|name|value|type|role|style|for|rel|target|lang|aria-[a-z-]+|data-[a-z0-9-]+|wire:[a-z.:-]+|x-[a-z.:-]+)="'
         .'|(?<![\w/.:\[-])data-[a-z][a-z0-9-]*|(?<![\w/.\[-])wire:[a-z]';
+
+    /** Laravel and Livewire checks that compare markup as a string, whatever they are given. */
+    private const array MARKUP_CHECKS = ['assertseehtml', 'assertdontseehtml', 'assertseehtmlinorder', 'assertseeinorder'];
+
+    /** Laravel checks that compare markup where their second argument turns escaping off. */
+    private const array UNESCAPED_CHECKS = ['assertsee', 'assertdontsee'];
 
     /** A cut or a search also by the bracket of a tag alone: `Str::betweenFirst($html, 'data-x', '>')`. */
     private const string READ_MARKUP = self::MARKUP.'|^[<>]$';
@@ -95,7 +74,7 @@ final class MarkupAsStringRule implements Rule
 
     private function findMessage(CallLike $node, Scope $scope): ?string
     {
-        $name = $this->nameOf($node);
+        $name = StringCalls::nameOf($node);
 
         if ($name === null) {
             return null;
@@ -105,22 +84,13 @@ final class MarkupAsStringRule implements Rule
         $arguments = $node->getArgs();
 
         return match (true) {
-            $node instanceof FuncCall => in_array($method, self::FUNCTIONS, true) && $this->holdsMarkup($arguments, self::MARKUP)
+            $node instanceof FuncCall => array_key_exists($method, StringCalls::FUNCTIONS) && $this->holdsMarkup($arguments, self::MARKUP)
                 ? sprintf('%s() reads HTML as a string: its literal holds a tag or an attribute.', $name)
                 : null,
             in_array($method, self::MARKUP_CHECKS, true) => sprintf('%s() checks markup as a string.', $name),
             in_array($method, self::UNESCAPED_CHECKS, true) && $this->turnsEscapingOff($arguments) => sprintf('%s() with escaping off checks markup as a string.', $name),
-            in_array($method, self::STRING_CHECKS, true) && $this->holdsMarkup($arguments, self::MARKUP) => sprintf('%s() checks markup as a string: its literal holds a tag or an attribute.', $name),
-            in_array($method, self::STRING_READS, true) && $this->readsAString($node, $scope) && $this->holdsMarkup($arguments, self::READ_MARKUP) => sprintf('%s() reads HTML as a string: its literal holds a tag or an attribute.', $name),
-            default => null,
-        };
-    }
-
-    private function nameOf(CallLike $node): ?string
-    {
-        return match (true) {
-            ($node instanceof MethodCall || $node instanceof NullsafeMethodCall || $node instanceof StaticCall) && $node->name instanceof Identifier => $node->name->toString(),
-            $node instanceof FuncCall && $node->name instanceof Name => $node->name->toString(),
+            array_key_exists($method, StringCalls::STRING_CHECKS) && $this->holdsMarkup($arguments, self::MARKUP) => sprintf('%s() checks markup as a string: its literal holds a tag or an attribute.', $name),
+            array_key_exists($method, StringCalls::STRING_READS) && $this->readsAString($node, $scope) && $this->holdsMarkup($arguments, self::READ_MARKUP) => sprintf('%s() reads HTML as a string: its literal holds a tag or an attribute.', $name),
             default => null,
         };
     }
@@ -130,7 +100,8 @@ final class MarkupAsStringRule implements Rule
     {
         return match (true) {
             $node instanceof StaticCall => $node->class instanceof Name && $scope->resolveName($node->class) === Str::class,
-            $node instanceof MethodCall, $node instanceof NullsafeMethodCall => true,
+            // A `?->` call reaches the rule twice: as itself and as a `MethodCall`.
+            $node instanceof MethodCall => true,
             default => false,
         };
     }

@@ -34,7 +34,7 @@ Each part of the package acts at one step of the loop in which an agent writes a
 | Step | Part |
 |---|---|
 | Before the agent writes | A [Laravel Boost](#laravel-boost) skill gives the agent the checks and the rules for selectors. |
-| When the agent checks its work | The [PHPStan rule](#phpstan) `html.markupAsString` stops a check of markup as a string and says what to use instead. |
+| When the agent checks its work | The [PHPStan rules](#phpstan) `html.markupAsString` and `html.classAsString` report a check of markup or of a class as a string and say what to use instead. |
 | When a test fails | The [message](#when-a-check-fails) names the region, what was asked, what was found, and shows the HTML of the region. The agent can fix the test without a browser. |
 | In an existing suite | A [Rector rule](#rector) rewrites the mechanical forms of crawler code. |
 
@@ -46,7 +46,7 @@ The package has four parts:
 |---|---|---|
 | PHPUnit | `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit` | the constraints, `Html` (a page or a region of it) and the `AssertsHtml` trait |
 | Pest | `SorgeIt\PhpunitPestHtmlAssertions\Pest` | the expectations and the function `html()` |
-| PHPStan | `SorgeIt\PhpunitPestHtmlAssertions\PHPStan` | the rule `html.markupAsString`, which reports a check of markup as a string |
+| PHPStan | `SorgeIt\PhpunitPestHtmlAssertions\PHPStan` | the rules `html.markupAsString` and `html.classAsString`, which report a check of markup or of a class as a string |
 | Rector | `SorgeIt\PhpunitPestHtmlAssertions\Rector` | a rule that rewrites the mechanical forms of crawler code |
 
 ## Requirements
@@ -54,6 +54,7 @@ The package has four parts:
 - PHP 8.3, 8.4 or 8.5
 - PHPUnit 12.5 or 13
 - Pest 4 or 5, optional, for the expectations
+- the PHP extensions `dom` and `mbstring`
 - Symfony DomCrawler and CssSelector 7.4 or 8.1
 
 The CI tests three stacks: PHP 8.3 with PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4; PHP 8.4 with
@@ -252,35 +253,113 @@ Escape a colon or a dot in an attribute name: `[wire\:model="name"]`, `[wire\:po
 ## PHPStan
 
 With `phpstan/extension-installer`, `extension.neon` loads automatically. Without it, include
-`vendor/sorge-it/phpunit-pest-html-assertions/extension.neon`. In a directory named `tests` or
-`Tests`, the rule `html.markupAsString` reports:
+`vendor/sorge-it/phpunit-pest-html-assertions/extension.neon`. Two rules read the files in a
+directory named `tests` or `Tests`:
 
-- `assertSeeHtml`, `assertDontSeeHtml`, `assertSeeHtmlInOrder`, `assertSeeInOrder`, always;
+| Rule | Reports | Use instead |
+|---|---|---|
+| `html.markupAsString` | a check of markup as a string: `assertSeeHtml('<b>')`, `toContain('<div')` | a check with a CSS selector |
+| `html.classAsString` | a check that a string holds a class: `toContain('lg:grid-cols-4')` | `toHaveSelectorClass()` or `assertHtmlSelectorClass()` |
+
+Both rules read literals. PHPStan cannot know whether a string is HTML, so a rule reports a literal
+whose form is rare outside of HTML. The calls they read:
+
+- the checks of Pest: `toContain`, `toBe` (only `html.markupAsString`), `toStartWith`, `toEndWith`, `toMatch`;
+- the PHPUnit assertions of a string: `assertStringContainsString` and `assertStringNotContainsString`
+  with their `IgnoringCase` forms, `assertStringContainsStringIgnoringLineEndings`,
+  `assertStringStartsWith`, `assertStringStartsNotWith`, `assertStringEndsWith`,
+  `assertStringEndsNotWith`, `assertMatchesRegularExpression`, `assertDoesNotMatchRegularExpression`;
+- the searches and cuts of Laravel's `Str` and `Stringable`: `contains`, `containsAll`,
+  `doesntContain`, `startsWith`, `endsWith`, `substrCount`, `match`, `matchAll`, `isMatch`, `test`,
+  `after`, `afterLast`, `before`, `beforeLast`, `between`, `betweenFirst`;
+- the functions of PHP: `preg_match`, `preg_match_all`, `str_contains`, `str_starts_with`,
+  `str_ends_with`, `strpos`, `substr_count` and their `i` and `mb_` forms.
+
+### Markup as a string
+
+`html.markupAsString` reports:
+
+- `assertSeeHtml`, `assertDontSeeHtml`, `assertSeeHtmlInOrder` and `assertSeeInOrder`, always;
 - `assertSee` and `assertDontSee` with escaping off;
-- `toContain`, `toBe`, `toStartWith`, `toEndWith`, `toMatch`, `assertStringContainsString`,
-  `assertStringNotContainsString`, `assertStringStartsWith`, `assertStringEndsWith`,
-  `assertMatchesRegularExpression` and `assertDoesNotMatchRegularExpression`, where a literal holds
-  markup;
-- the string methods of Laravel's `Str` and `Stringable` (`between`, `after`, `before`, `contains`,
-  `match` and similar), where a literal holds markup or is a bracket of a tag alone;
-- `preg_match`, `preg_match_all`, `str_contains`, `str_starts_with`, `str_ends_with`, `strpos`,
-  `substr_count` and their `i` and `mb_` forms, where a literal holds markup.
+- each call of the list above whose literal holds markup. A cut of `Str` also when its literal is a
+  bracket of a tag alone: `Str::betweenFirst($html, 'data-x', '>')`.
 
 Markup is a tag (also in a regular expression, `<div[^>]*>`), an attribute of HTML with its value, or
-the name of a `data-*` or `wire:` attribute. After `[` it is a CSS selector and not reported.
+the name of a `data-*` or `wire:` attribute. After `[`, it is a CSS selector and not reported.
 
-The rule reads literals, so it does not see everything: `mb_substr_count($html, 'bg-red-500')`
-holds a class and no markup, and passes.
+### A class as a string
 
-A check that compares a string on purpose, for example the byte contract of a function that rewrites
-markup, says so on its line. PHPStan asks for the reason and reports the line when it no longer
-matches:
+`html.classAsString` reports a check that a string holds a class. Such a check passes when the class
+is anywhere: on another element, inside a longer class, in a script or in a comment.
+
+```php
+expect($html)->toContain('lg:grid-cols-4');                                // reported
+expect(str_contains($html, 'lg:grid-cols-4'))->toBeTrue();                 // reported
+expect($html)->toHaveSelectorClass('[data-highlights]', 'lg:grid-cols-4'); // the element has the class
+```
+
+It reports a check when all of these are true:
+
+- **The check searches a string, or checks the result of a search.** `toBe` compares the whole
+  string and is not read. A search is read only as the value of a check:
+  `expect(substr_count($html, 'lg:flex'))->toBe(2)`, `$this->assertTrue(Str::contains($html, 'lg:flex'))`.
+  A search in an `if` or in a closure is not a check. A cut (`Str::after`) is not read: its result
+  does not tell whether it found its text.
+- **The check passes when the class is found.** A negative check is not reported:
+  `->not->toContain()`, `assertStringNotContainsString()`, `expect(str_contains(…))->toBeFalse()`,
+  `assertSame(0, substr_count(…))`, `Str::doesntContain()`. It fails when the class is anywhere, so it
+  is stricter than a check of the DOM. A check that does not say found or absent is not reported
+  either: `toBeBool()`, `toBe($value)`, `toBeTruthy()` on a position, which is 0 at the start of the
+  string, and `toEqual(0)` or `assertEquals(0, …)`, which also pass for `false`.
+- **The searched value is a string,** also `string|false` from `getContent()` or `?string`. An array,
+  a collection or `mixed` is not reported. A call that reads the class attribute directly,
+  `$element->getAttribute('class')`, is not reported. A variable, a cast or `?? ''` around it is
+  reported.
+- **Each word of the literal can be in a `class` attribute, and one word is a utility of Tailwind:**
+  with a value in `[ ]` (`max-w-[90rem]`), or after a variant (`lg:grid-cols-4`, `hover:underline`,
+  `group-hover/item:underline`, `data-[state=open]:block`, `@md:flex`, `lg:flex!`). After a variant,
+  the utility has a digit, a `-`, a `/` or `[ ]`, or it is a known word such as `flex`. So
+  `after:today`, `first:name` and `mailto:` are not classes. A value of letters alone in `[ ]` is a
+  key: `errors-[name]`.
+- **The literal has no markup.** A literal with markup is for `html.markupAsString`.
+
+The rule joins a literal with a variable before it reads it: `"lg:grid-cols-{$n}"` is a class,
+`"after:{$date}"` is not. It reads a regular expression without its delimiters, `toMatch('/lg:flex/')`.
+A pattern with other syntax is not read: a character class, a group, an alternative, a quantifier,
+an anchor or an escape such as `\b`.
+
+A plain word (`flex`), kebab-case (`header-grid`) and a custom property (`--row-bg: #fff`) are not
+reported. In tests, the first two are often a header value, a slug or text. For a custom property in
+a `style` attribute, use `toHaveSelectorAttributeContaining()`: the rule cannot tell that attribute
+from CSS text.
+
+A project that writes its classes in camelCase (`headerNav`) can turn on that form. In other
+projects, camelCase in a test is usually a name of JavaScript or PHP.
+
+```neon
+parameters:
+    htmlAssertions:
+        camelCaseClasses: true
+```
+
+### Ignore a line on purpose
+
+A check that compares a string on purpose gets an ignore comment on its line. Write the reason in
+parentheses. PHPStan reports the comment when the rule no longer reports the line:
 
 ```php
 expect($rewritten)->toBe($expected); // @phpstan-ignore html.markupAsString (the rewriter keeps every other byte)
+expect($script)->toContain('lg:hidden'); // @phpstan-ignore html.classAsString (the script adds the class)
 ```
 
-A suite that PHPStan reads at no other level can read its tests at level 0 for this rule alone.
+### What the rules do not see
+
+- A string in a variable: `$needle = 'lg:flex'; expect($html)->toContain($needle);`.
+- A class without a variant or `[ ]`: `expect(mb_substr_count($html, 'bg-red-500'))->toBe(1)`. Neither
+  rule reports it.
+- A search whose result goes into a variable first.
+
+A project that does not check its tests with PHPStan can check them at level 0 for these rules.
 
 ## Rector
 

@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /** Analysed by MarkupAsStringRuleTest, never run. Each line names whether the rule reports it. */
 final class StringChecks
 {
-    public function check(object $response, object $expectation, string $html, string $id): void
+    public function check(object $response, object $expectation, string $html, string $id, ?object $text = null): void
     {
         $response->assertSeeHtml('<b>');                              // reported
         $response->assertDontSeeHtml('x');                            // reported: the call itself is the problem
@@ -47,5 +47,10 @@ final class StringChecks
         mb_substr_count($html, 'bg-blue-500" data-dot');               // reported
         mb_strpos($html, 'Review');                                   // text: not reported
         $expectation->toContain('[data-name="Ben"]');                  // a CSS selector: not reported
+        $this->assertStringContainsStringIgnoringCase('<b>', $html);   // reported
+        $this->assertStringStartsNotWith('<html', $html);              // reported
+        Str::doesntContain($html, 'data-here');                        // reported
+        Str::isMatch('/<li>/', $html);                                 // reported
+        $text?->contains('<li>');                                      // reported once
     }
 }

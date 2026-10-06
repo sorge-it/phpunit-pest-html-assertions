@@ -46,6 +46,11 @@ final class MarkupAsStringRuleTest extends RuleTestCase
             $read('preg_match_all', 44),
             $read('str_contains', 46),
             $read('mb_substr_count', 47),
+            $check('assertStringContainsStringIgnoringCase', 50),
+            $check('assertStringStartsNotWith', 51),
+            $read('doesntContain', 52),
+            $read('isMatch', 53),
+            $read('contains', 54),
         ]);
     }
 
