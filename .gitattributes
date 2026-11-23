@@ -7,6 +7,7 @@
 /composer.lock export-ignore
 /context7.json export-ignore
 /demo export-ignore
+/docker export-ignore
 /fixtures export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml export-ignore
