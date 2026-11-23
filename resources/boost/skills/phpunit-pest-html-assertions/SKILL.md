@@ -14,7 +14,7 @@ metadata:
 - Never search the HTML for a class as text: `toContain('lg:grid-cols-4')` passes when the class is on any element, in a script or in a comment. Ask the element with `toHaveSelectorClass()`.
 - Select by tag, role, `aria-*`, label or visible text first, then by a `data-*` marker. A CSS class is a value to check, not a selector. Vendor markup (for example Filament's `fi-*` classes) is the exception.
 - Every check takes a string of HTML, a Symfony `Crawler`, a Laravel `TestResponse`, `TestView` or `TestComponent`, a Livewire `Testable`, a PSR-7 `ResponseInterface`, a Symfony `Response`, or an `Html`.
-- A string is parsed as a whole page. A table cell without its table loses its tags: wrap a fragment such as `<td>x</td>` in `<table>`.
+- A string is parsed as a whole page. Wrap a fragment of a table such as `<td>x</td>` in `<table>`: on PHP 8.4 and later, the cell alone loses its tags.
 - Escape a colon or a dot in an attribute name: `[wire\:model="name"]`.
 
 ## Pest expectations
@@ -34,7 +34,7 @@ expect($response)->toHaveSelectorAttribute('button[data-send]', 'disabled');
 expect($response)->toHaveSelectorAttributeContaining('a[data-next]', 'href', 'page=2');
 expect($response)->toHaveSelectorAttributeNamed('main', 'wire:poll');
 expect($response)->toHaveSelectorClass('[data-status]', 'bg-red-500');
-expect($response)->toHaveText('Anna Ben');
+expect(html($response))->within('[data-people]')->toHaveText('Anna Ben'); // the whole text of the region
 expect($response)->toHaveTextContaining('Anna');
 expect($response)->toHaveTextCount('Anna', 1);
 expect($response)->toAppearBefore('[data-head]', '[data-body]');
@@ -49,7 +49,27 @@ expect($response)->toBeEmptyNode('[data-errors]');
 
 Use `toBeEmptyNode`, not `toBeEmpty`: Pest has its own `toBeEmpty`.
 
-The PHPUnit trait `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml` has the same checks as methods, for example `assertHtmlSelectorExists`, `assertHtmlSelectorTextSame` and `assertHtmlSelectorAttribute`.
+The PHPUnit trait `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml` has the same checks as static methods. Each takes the page first, then the arguments of the expectation. The names do not follow from the expectations:
+
+| Pest | PHPUnit |
+|---|---|
+| `toHaveSelector`, `not->toHaveSelector` | `assertHtmlSelectorExists`, `assertHtmlSelectorNotExists` |
+| `toHaveSelectorCount`, `toHaveSelectorCountAtLeast` | `assertHtmlSelectorCount`, `assertHtmlSelectorCountAtLeast` |
+| `toHaveSelectorText`, `toHaveSelectorTextContaining` | `assertHtmlSelectorTextSame`, `assertHtmlSelectorTextContains` |
+| `toHaveAnySelectorText`, `toHaveAnySelectorTextContaining` | `assertHtmlAnySelectorTextSame`, `assertHtmlAnySelectorTextContains` |
+| `toHaveSelectorAttribute`, `toHaveSelectorAttributeContaining`, `toHaveSelectorAttributeNamed` | `assertHtmlSelectorAttribute`, `assertHtmlSelectorAttributeContains`, `assertHtmlSelectorAttributeNamed` |
+| `toHaveSelectorClass` | `assertHtmlSelectorClass` |
+| `toHaveText`, `toHaveTextContaining`, `toHaveTextCount` | `assertHtmlTextSame`, `assertHtmlTextContains`, `assertHtmlTextCount` |
+| `toAppearBefore` | `assertHtmlSelectorBefore` |
+| `toHaveTitle` | `assertHtmlPageTitleSame` |
+| `toHaveInputValue` | `assertHtmlInputValueSame` |
+| `toBeChecked` | `assertHtmlCheckboxChecked` |
+| `toHaveSelectedOption` | `assertHtmlSelectedOption` |
+| `toBeDisabled` | `assertHtmlSelectorDisabled` |
+| `toHaveLink` | `assertHtmlLink` |
+| `toBeEmptyNode` | `assertHtmlSelectorEmpty` |
+
+To turn another check around in PHPUnit, pass its constraint from `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint` to `assertHtmlNot()`, for example `self::assertHtmlNot($response, new HasSelectorText('h1', 'Error'))`.
 
 ## The reason for a check
 
@@ -76,7 +96,7 @@ expect($response)->toHaveSelectorCount('[data-errors]', 0, 'A valid form shows n
 
 ## Regions and values
 
-`html($value)` turns a page into an `Html`. On an `Html`, the methods below chain like expectations.
+`html($value)` turns a page into an `Html`. On an `Html`, the methods below chain like expectations. A check after `within()` looks inside the region, even after another check. A value (`texts()`, `rawTexts()`, `attributes()`) or a second `within()` after a check reads the whole page again: give it an `expect()` of its own.
 
 ```php
 use function SorgeIt\PhpunitPestHtmlAssertions\Pest\html;

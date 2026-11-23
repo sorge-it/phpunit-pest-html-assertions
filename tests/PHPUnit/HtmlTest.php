@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace SorgeIt\PhpunitPestHtmlAssertions\Tests\PHPUnit;
 
+use DOMText;
 use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use Nyholm\Psr7\Response as Psr7Response;
 use PHPUnit\Framework\TestCase;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Excerpt;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage;
 use SorgeIt\PhpunitPestHtmlAssertions\Tests\Page;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -181,6 +184,11 @@ final class HtmlTest extends TestCase
         self::assertStringContainsString("  <ul data-people>\n    <li data-name=\"Anna\" class=\"rounded-lg bg-blue-500\">\n      Anna Example", $shown['html']);
     }
 
+    public function test_the_excerpt_leaves_out_a_comment(): void
+    {
+        self::assertSame("  <p>\n    Anna", Html::of('<main><p>Anna<!-- the name --></p></main>')->within('p')->excerpt());
+    }
+
     public function test_the_excerpt_cuts_a_long_region(): void
     {
         $long = '<ul>'.str_repeat('<li>Eintrag</li>', 50).'</ul>';
@@ -189,5 +197,88 @@ final class HtmlTest extends TestCase
 
         self::assertCount(41, explode("\n", $excerpt));
         self::assertMatchesRegularExpression('/… \d+ more lines$/', $excerpt);
+    }
+
+    public function test_the_excerpt_shows_forty_lines_and_counts_the_rest(): void
+    {
+        $excerpt = fn (string $items): string => Html::of('<main><ol>'.$items.'</ol></main>')->within('ol')->excerpt();
+        $nineteen = "  <ol>\n".str_repeat("    <li>\n      x\n", 19);
+
+        self::assertSame($nineteen.'    y', $excerpt(str_repeat('<li>x</li>', 19).'y'));
+        self::assertSame($nineteen."    <li>\n… 1 more lines", $excerpt(str_repeat('<li>x</li>', 20)));
+    }
+
+    public function test_the_excerpt_cuts_a_long_text_a_long_value_and_a_long_tag_but_not_one_that_fits(): void
+    {
+        [$a, $b, $c, $d] = [str_repeat('a', 40), str_repeat('b', 41), str_repeat('c', 100), str_repeat('d', 101)];
+        $page = sprintf('<main><div><p title="%s">%s</p><p title="%s" hidden>%s</p><b title="%s" lang="%s" id="x"></b></div></main>', $a, $c, $b, $d, $a, $a);
+
+        self::assertSame(
+            sprintf("  <div>\n    <p title=\"%s\">\n      %s\n    <p title=\"%s…\" hidden>\n      %s…\n    <b title=\"%s\" lang=\"%s\"…", $a, $c, mb_substr($b, 2), mb_substr($d, 2), $a, $a),
+            Html::of($page)->within('div')->excerpt(),
+        );
+    }
+
+    public function test_a_response_without_content_reads_as_an_empty_page(): void
+    {
+        $file = new BinaryFileResponse(__FILE__);
+
+        self::assertSame('', Html::of(new StreamedResponse(fn (): null => null))->text());
+        self::assertSame('', Html::of(TestResponse::fromBaseResponse($file))->text());
+    }
+
+    public function test_a_region_in_a_region_and_each_match_in_it_keep_the_whole_path(): void
+    {
+        $body = Html::of(Page::HTML)->within('[data-body]');
+
+        self::assertSame('(page) > [data-body] > form', $body->within('form')->path());
+        self::assertSame('(page) > [data-body] > form > input:nth-match(2)', $body->within('form')->matches('input')[1]->path());
+    }
+
+    public function test_a_region_counts_as_one_assertion(): void
+    {
+        $before = self::getCount();
+
+        Html::of(Page::HTML)->within('[data-people]');
+
+        self::assertSame($before + 1, self::getCount());
+    }
+
+    public function test_attribute_values_include_those_of_the_element_of_the_region(): void
+    {
+        self::assertSame(['/out?u=1', ''], Html::of(Page::HTML)->within('[data-link]')->attributeValues());
+    }
+
+    public function test_the_matches_are_a_list_also_where_a_template_or_the_region_leaves_out_the_first(): void
+    {
+        self::assertSame(['b'], Html::of('<main><template><p>a</p></template><p>b</p></main>')->texts('p'));
+        self::assertSame(['in'], Html::of('<main><p>out</p><div><p>in</p></div></main>')->within('div')->texts('p'));
+    }
+
+    public function test_a_crawler_of_texts_has_no_element_to_stand_on(): void
+    {
+        $texts = (new Crawler('<main><p>a</p></main>'))->filterXPath('//p/text()');
+
+        self::assertSame([], Html::of($texts)->roots());
+    }
+
+    public function test_the_roots_of_a_crawler_are_a_list_also_where_a_text_comes_first(): void
+    {
+        $nodes = (new Crawler('<main><p>a</p><p>b</p></main>'))->filterXPath('//p[1]/text() | //p[2]');
+
+        self::assertSame([$nodes->getNode(1)], Html::of($nodes)->roots());
+    }
+
+    public function test_the_text_of_a_node_leaves_out_what_is_not_utf_8(): void
+    {
+        $page = Html::of('<main><p data-broken></p></main>');
+        $page->elements('[data-broken]')[0]->appendChild(new DOMText("\xFF"));
+
+        self::assertSame([''], $page->texts('[data-broken]'));
+    }
+
+    public function test_the_excerpt_collapses_white_space_and_leaves_out_an_empty_text_or_one_that_is_not_utf_8(): void
+    {
+        self::assertSame('  Anna Example', Excerpt::of([new DOMText("\xFF"), new DOMText(" \n "), new DOMText("  Anna \n Example ")]));
     }
 }

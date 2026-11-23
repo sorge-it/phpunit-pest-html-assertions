@@ -11,15 +11,22 @@ use PHPUnit\Framework\Constraint\Constraint;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\AppearsBefore;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\ChecksARegion;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasLink;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelector;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorAttribute;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorAttributeContaining;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorAttributeNamed;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorClass;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorText;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasSelectorTextContaining;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\HasTextContaining;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\IsDisabled;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\Not;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\RegionCheck;
+use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\Texts;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NotAPage;
 use SorgeIt\PhpunitPestHtmlAssertions\Tests\Page;
@@ -267,6 +274,83 @@ final class AssertsHtmlTest extends TestCase
     {
         self::assertHtmlSelectedOption('<select><option value="a" selected><option value="b" selected></select>', 'select', 'b');
         self::assertHtmlSelectedOption('<select><option value="a"><option value="b"></select>', 'select', 'a');
+    }
+
+    public function test_a_select_without_an_option_has_none_chosen(): void
+    {
+        self::assertHtmlSelectedOption('<select></select>', 'select', '');
+    }
+
+    public function test_a_node_is_disabled_by_its_own_attribute(): void
+    {
+        self::assertHtmlSelectorDisabled('<button disabled>a</button>', 'button');
+    }
+
+    public function test_a_check_of_some_node_says_where_its_selector_finds_none(): void
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage("with the text \"Clara\".\nThe selector \"[data-here]\" finds 0 nodes.");
+
+        self::assertHtmlAnySelectorTextSame(Page::HTML, '[data-here]', 'Clara');
+    }
+
+    public function test_a_check_of_some_node_shows_ten_texts_and_counts_the_rest(): void
+    {
+        $list = fn (int $count): Html => Html::of('<ul>'.implode('', array_map(fn (int $item): string => sprintf('<li>%d</li>', $item), range(1, $count))).'</ul>');
+        $ten = '"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"';
+
+        self::assertSame(sprintf('The nodes hold %s.', $ten), Texts::found($list(10), 'li'));
+        self::assertSame(sprintf('The nodes hold %s and 2 more.', $ten), Texts::found($list(12), 'li'));
+    }
+
+    public function test_a_value_that_is_not_a_page_without_a_message_keeps_its_text(): void
+    {
+        $this->expectException(NotAPage::class);
+        $this->expectExceptionMessageMatches('/^A check of HTML reads /');
+
+        self::assertHtmlSelectorExists(42, 'p');
+    }
+
+    public function test_a_node_does_not_appear_before_itself(): void
+    {
+        self::assertHtmlNot(Page::HTML, new AppearsBefore('h1', 'h1'));
+    }
+
+    public function test_only_a_disabled_fieldset_disables_what_is_in_it(): void
+    {
+        self::assertHtmlNot('<div disabled><button>a</button></div>', new IsDisabled('button'));
+    }
+
+    public function test_a_failure_names_the_attributes_the_node_has(): void
+    {
+        $named = new HasSelectorAttributeNamed('p', 'wire:');
+        $attribute = new HasSelectorAttribute('p', 'id', 'x');
+        $containing = new HasSelectorAttributeContaining('p', 'id', 'x');
+
+        self::assertSame('Its attributes are none.', $named->found(Html::of('<p></p>')));
+        self::assertSame('Its attributes are id, data-x.', $named->found(Html::of('<p id="a" data-x></p>')));
+        self::assertSame('The node has no attribute "id".', $attribute->found(Html::of('<p></p>')));
+        self::assertSame('The attribute is "a".', $attribute->found(Html::of('<p id="a"></p>')));
+        self::assertSame('The node has no attribute "id".', $containing->found(Html::of('<p></p>')));
+        self::assertSame('The attribute is "a".', $containing->found(Html::of('<p id="a"></p>')));
+    }
+
+    public function test_a_failure_names_ten_links_or_none(): void
+    {
+        $link = new HasLink('Next', '/next');
+        $links = implode('', array_map(fn (int $item): string => sprintf('<a href="/%d">%d</a>', $item, $item), range(1, 11)));
+        $ten = implode(', ', array_map(fn (int $item): string => sprintf('"%d" to "/%d"', $item, $item), range(1, 10)));
+
+        self::assertSame('The region has no link.', $link->found(Html::of('<p>Next</p>')));
+        self::assertSame(sprintf('The links are %s.', $ten), $link->found(Html::of('<nav>'.$links.'</nav>')));
+    }
+
+    public function test_a_failure_cuts_a_long_text_to_300_characters(): void
+    {
+        $containing = new HasTextContaining('Montag');
+
+        self::assertSame('Its text is "Review".', $containing->found(Html::of('<p>Review</p>')));
+        self::assertSame(sprintf('Its text is "a%s…".', str_repeat('x', 298)), $containing->found(Html::of('<p>a'.str_repeat('x', 399).'</p>')));
     }
 
     public function test_the_first_legend_of_a_disabled_fieldset_stays_enabled(): void

@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /** Analysed by MarkupAsStringRuleTest, never run. Each line names whether the rule reports it. */
 final class StringChecks
 {
-    public function check(object $response, object $expectation, string $html, string $id, ?object $text = null): void
+    public function check(object $response, object $expectation, string $html, string $id, ?object $text = null, bool $escape = false, string $class = Str::class): void
     {
         $response->assertSeeHtml('<b>');                              // reported
         $response->assertDontSeeHtml('x');                            // reported: the call itself is the problem
@@ -52,5 +52,9 @@ final class StringChecks
         Str::doesntContain($html, 'data-here');                        // reported
         Str::isMatch('/<li>/', $html);                                 // reported
         $text?->contains('<li>');                                      // reported once
+        $response->{$id}('<b>');                                       // a name in a variable: not reported
+        $response->assertSee('<b>', $escape);                          // escaping unknown: not reported
+        \App\Str::between($html, '<ul>', '</ul>');                     // another class named Str: not reported
+        $class::between($html, '<ul>', '</ul>');                       // a class in a variable: not reported
     }
 }

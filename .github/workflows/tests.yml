@@ -5,60 +5,153 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  # Weekly, as the stack newest changes with each release of a package, also without a commit here.
+  schedule:
+    - cron: '23 5 * * 1'
 
 permissions:
   contents: read
 
+# Dependabot updates the actions and the images of `.github/docker` and `demo`. Composer, pinned by
+# digest in `tools`, is updated by hand, to the version of the Composer image in `demo`.
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   tests:
-    name: PHP ${{ matrix.php }} · ${{ matrix.stack }}
-    runs-on: ubuntu-latest
+    name: PHP ${{ matrix.php }} · ${{ matrix.stack }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          # PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4, the oldest stack the package supports.
+          # The versions of composer.lock, which is resolved for PHP 8.3.
           - php: '8.3'
-            stack: PHPUnit 12 · Pest 4 · Laravel 12 · Symfony 7.4
-            install: >-
-              composer update --no-interaction --prefer-dist
-              --with phpunit/phpunit:^12.5
-              --with pestphp/pest:^4.7
-              --with pestphp/pest-plugin-type-coverage:^4.0
-              --with illuminate/testing:^12.0
-              --with symfony/css-selector:^7.4
-              --with symfony/dom-crawler:^7.4
-              --with symfony/framework-bundle:^7.4
-              --with symfony/http-foundation:^7.4
-          # The newest versions that run on PHP 8.4.
-          - php: '8.4'
-            stack: newest
-            install: composer update --no-interaction --prefer-dist
-          # The versions of composer.lock.
-          - php: '8.5'
+            os: ubuntu-24.04
             stack: locked
             install: composer install --no-interaction --prefer-dist
+            test: composer test
+          # The lowest versions Composer installs for composer.json; it skips releases with a known
+          # advisory. Only the suite: the lowest Pint, Rector and PHPStan do not judge the code as the
+          # locked ones do.
+          - php: '8.3'
+            os: ubuntu-24.04
+            stack: lowest
+            install: composer update --no-interaction --prefer-dist --prefer-lowest
+            test: composer test:unit
+          - php: '8.4'
+            os: ubuntu-24.04
+            stack: locked
+            install: composer install --no-interaction --prefer-dist
+            test: composer test
+          # The newest versions: without the platform of composer.json, which is PHP 8.3 for the lock.
+          - php: '8.5'
+            os: ubuntu-24.04
+            stack: newest
+            install: composer config --unset platform.php && composer update --no-interaction --prefer-dist
+            test: composer test
+          - php: '8.5'
+            os: macos-15
+            stack: locked
+            install: composer install --no-interaction --prefer-dist
+            test: composer test
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # intl: without it, the Rector tests of the stack lowest load the Normalizer of
+      # symfony/polyfill-intl-normalizer 1.0.0, which PHP 8.3 refuses.
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom
+          extensions: dom, intl, mbstring
           coverage: none
+          tools: composer:2.10.3@sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
 
       - name: Install dependencies
         run: ${{ matrix.install }}
 
       - name: Test
-        run: composer test
+        run: ${{ matrix.test }}
 
-      # The demo cart has an empty total: the string check stays green, PHPStan reports it, the
-      # check by selector fails at the test line. Those two fail on purpose: their output is read.
+  coverage:
+    name: Coverage · PHP 8.5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: dom, intl, mbstring
+          coverage: pcov
+          tools: composer:2.10.3@sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Coverage
+        run: composer test:coverage
+
+  package:
+    name: Package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:2.10.3@sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
+
+      - name: Validate
+        run: composer validate --strict
+
+      - name: Audit
+        run: composer audit --locked
+
+  # The demo cart has an empty total: the string check stays green, PHPStan reports it, the check by
+  # selector fails at the test line. Those two fail on purpose: their output is read.
+  demo:
+    name: Demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: dom, intl, mbstring
+          coverage: none
+          tools: composer:2.10.3@sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
+
       - name: Demo
         working-directory: demo/app
         run: |
@@ -69,3 +162,25 @@ jobs:
           pest=$(vendor/bin/pest --colors=never tests/CartTest.php || true)
           grep -q 'at tests/CartTest.php' <<< "$pest"
           if grep -q 'src/PHPUnit/' <<< "$pest"; then echo 'A frame of the package is in the trace.'; exit 1; fi
+
+  # The workflows, by the checks that need no GitHub token.
+  workflows:
+    name: Workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Audit
+        run: |
+          docker build --quiet --tag zizmor .github/docker/zizmor
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src zizmor --offline .github
+
+      - name: Lint
+        run: |
+          docker build --quiet --tag actionlint .github/docker/actionlint
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src actionlint -no-color

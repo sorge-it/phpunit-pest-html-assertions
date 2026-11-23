@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace SorgeIt\PhpunitPestHtmlAssertions\Tests\PHPStan;
 
 use Override;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Name;
+use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
+use ReflectionMethod;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPStan\ClassAsStringRule;
 
 /** @extends RuleTestCase<ClassAsStringRule> */
@@ -43,6 +47,14 @@ final class ClassAsStringRuleTest extends RuleTestCase
     public function test_it_leaves_code_outside_the_tests_alone(): void
     {
         $this->analyse([__DIR__.'/../../fixtures/NotATest.php'], []);
+    }
+
+    public function test_it_finds_no_search_in_a_call_that_is_neither_a_function_nor_a_method(): void
+    {
+        // The rule hands readOf() only a call with a name, so `new` reaches it from here alone.
+        $readOf = new ReflectionMethod(ClassAsStringRule::class, 'readOf');
+
+        self::assertNull($readOf->invoke(new ClassAsStringRule, new New_(new Name('Crawler')), 'crawler', self::createStub(Scope::class)));
     }
 
     #[Override]

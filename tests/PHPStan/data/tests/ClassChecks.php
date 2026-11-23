@@ -69,6 +69,7 @@ final class ClassChecks extends TestCase
         expect($html)->toContain('--row-bg: #f5f5f5');                    // not reported: a custom property
         expect($html)->toContain('data-x lg:flex');                       // not reported: markup, for html.markupAsString
         expect($html)->toContain($map['lg:flex']);                        // not reported: the key of an array
+        expect($html)->toContain($map['x'].$map['y']);                    // not reported: no literal in the concatenation
     }
 
     /** @param array<string, string> $map */
@@ -78,7 +79,7 @@ final class ClassChecks extends TestCase
         expect([$html])->each->toContain('md:flex');                      // toContain() reported: one element after each
         expect($content)->toContain('xl:flex');                           // toContain() reported: string|false
         expect($maybe)->toContain('xl:flex');                             // toContain() reported: ?string
-        expect($html)->when(true, fn ($e) => $e)->toContain('lg:flex');   // toContain() reported: when() keeps the value
+        expect($html)->when(true, fn (mixed $e): mixed => $e)->toContain('lg:flex'); // toContain() reported: when() keeps the value
         expect($html)
             ->toContain('Review')
             ->toContain('hover:underline');                               // toContain() reported: on the line of the check
@@ -116,7 +117,7 @@ final class ClassChecks extends TestCase
         $this->assertDoesNotMatchRegularExpression('/lg:flex/', $html);   // not reported: negative
     }
 
-    public function reads(string $html, Stringable $text, ?Stringable $maybe, Collection $items, DOMElement $element): void
+    public function reads(string $html, Stringable $text, ?Stringable $maybe, Collection $items, DOMElement $element, callable $search): void
     {
         expect(str_contains($html, 'lg:flex'))->toBeTrue();               // str_contains() reported: found
         expect(str_contains(needle: 'lg:flex', haystack: $html))->toBeTrue(); // str_contains() reported: named
@@ -173,6 +174,9 @@ final class ClassChecks extends TestCase
         $this->assertNull(Str::match('/lg:flex/', $html) ?: null);        // not reported: no search in the subject
         expect(Str::matchAll('/x/', 'lg:flex'))->not->toBeEmpty();        // not reported: the literal is the subject
         expect($items->contains('lg:flex'))->toBeTrue();                  // not reported: a collection
+        expect($text->isEmpty())->toBeFalse();                            // not reported: a Stringable that does not search
+        $contains = str_contains(...);                                    // not reported: a first-class callable
+        expect($search($html, 'lg:flex'))->toBeTrue();                    // not reported: a function in a variable
         expect(str_contains($element->getAttribute('class'), 'lg:flex'))->toBeTrue(); // not reported: a class attribute
         str_contains($html, 'lg:flex');                                   // not reported: no check
         if (str_contains($html, 'lg:flex')) {                             // not reported: a branch, no check

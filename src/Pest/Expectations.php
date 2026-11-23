@@ -141,7 +141,7 @@ final class Expectations
                 : $class !== self::class && ! str_starts_with($class, 'Pest\\');
 
             if ($outsidePest) {
-                return false;
+                break;
             }
         }
 
