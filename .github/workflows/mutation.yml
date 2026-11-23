@@ -32,7 +32,7 @@ jobs:
           php-version: '8.5'
           extensions: dom, intl, mbstring
           coverage: pcov
-          tools: composer:2.10.3@sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
+          tools: composer:2.11.1@sha256:6f1b891e1d4927d62740276c540fb490e47689e19e102c49e8da849794882f8c
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
