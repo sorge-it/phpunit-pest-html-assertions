@@ -61,9 +61,9 @@ A workflow uses zizmor to audit the workflows and the Dependabot configuration i
 actionlint to check the workflows. Run both when you change anything there:
 
 ```sh
-docker build --quiet --tag zizmor .github/docker/zizmor
+docker build --quiet --tag zizmor docker/zizmor
 docker run --rm --volume "$PWD:/src:ro" --workdir /src zizmor --offline .github
-docker build --quiet --tag actionlint .github/docker/actionlint
+docker build --quiet --tag actionlint docker/actionlint
 docker run --rm --volume "$PWD:/src:ro" --workdir /src actionlint -no-color
 ```
 

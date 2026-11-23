@@ -17,8 +17,8 @@ updates:
   - package-ecosystem: docker
     directories:
       - /demo
-      - /.github/docker/actionlint
-      - /.github/docker/zizmor
+      - /docker/actionlint
+      - /docker/zizmor
     schedule:
       interval: monthly
     cooldown:
