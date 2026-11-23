@@ -1,11 +1,9 @@
 # HTML assertions for PHPUnit and Pest
 
-[![Tests](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml/badge.svg)](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml)
+[![Tests](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sorge-it/phpunit-pest-html-assertions/actions/workflows/tests.yml?query=branch%3Amain)
 [![Latest Version](https://img.shields.io/packagist/v/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
-[![Total Downloads](https://img.shields.io/packagist/dt/sorge-it/phpunit-pest-html-assertions)](https://packagist.org/packages/sorge-it/phpunit-pest-html-assertions)
-[![License](https://img.shields.io/packagist/l/sorge-it/phpunit-pest-html-assertions)](LICENSE.md)
-[![PHP Version](https://img.shields.io/packagist/php-v/sorge-it/phpunit-pest-html-assertions)](composer.json)
-[![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](phpstan.neon)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/sorge-it/phpunit-pest-html-assertions/php)](composer.json)
+[![License](https://img.shields.io/packagist/l/sorge-it/phpunit-pest-html-assertions)](LICENSE)
 
 **Your coding agent's tests are green, and the page is broken.** Agents check HTML the quickest
 way, as a string, and such a check passes by accident and fails for nothing. This package makes
@@ -24,7 +22,29 @@ expect($this->get('/cart'))
 
 The total on the cart page is empty. A string check stays green, PHPStan reports it, and the check
 by selector goes red at the line of the test and shows the HTML. The demo runs the app in
-[`demo/`](demo), and the CI runs it on every change.
+[`demo/`](https://github.com/sorge-it/phpunit-pest-html-assertions/tree/main/demo), and the CI runs
+it on every change.
+
+## Contents
+
+- [Why this exists](#why-this-exists)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [When to use it and when not to](#when-to-use-it-and-when-not-to)
+- [Comparison with assertSee(), Symfony, laravel-dom-assertions and browser tests](#comparison-with-assertsee-symfony-laravel-dom-assertions-and-browser-tests)
+- [Requirements](#requirements)
+- [Namespaces](#namespaces)
+- [What a check reads](#what-a-check-reads)
+- [Checks](#checks)
+- [Regions and values](#regions-and-values)
+- [When a check fails](#when-a-check-fails)
+- [Which selector](#which-selector)
+- [PHPStan](#phpstan)
+- [Rector](#rector)
+- [For coding agents](#for-coding-agents)
+- [Support](#support)
+- [License](#license)
+- [About the author](#about-the-author)
 
 ## Why this exists
 
@@ -74,7 +94,7 @@ Where Pest is installed, Composer registers the expectations. `tests/Pest.php` n
 
 ## Quick start
 
-**Pest:**
+**Pest, in a Laravel app:**
 
 ```php
 it('lists the items of the cart', function () {
@@ -84,10 +104,11 @@ it('lists the items of the cart', function () {
 });
 ```
 
-**PHPUnit:**
+**PHPUnit, in a Laravel app:**
 
 ```php
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\AssertsHtml;
+use Tests\TestCase;
 
 final class CartTest extends TestCase
 {
@@ -106,27 +127,61 @@ final class CartTest extends TestCase
 Every method of the trait starts with `assertHtml`. So the trait also works in a Symfony
 `WebTestCase`, which has its own `assertSelectorExists()` and similar methods.
 
-## Compared with
+## When to use it and when not to
 
-| Tool | What it checks | The difference |
-|---|---|---|
-| `assertSee()`, `assertSeeHtml()`, `toContain()` | a string | passes on text in an attribute or a script, fails when the markup around the text changes |
-| Symfony's `assertSelectorTextContains()` and the other `assertSelector…()` methods | CSS selectors | only in a `WebTestCase`, on the client's last response; no regions; the message shows no HTML |
-| `sinnbeck/laravel-dom-assertions` | CSS selectors | Laravel's test responses, views and Livewire components; this package also reads Symfony, TYPO3 and PSR-7 responses and adds PHPStan rules |
-| Laravel Dusk, Pest's browser tests | a real browser | for JavaScript, CSS and clicks; slower. This package checks the HTML the server renders, in a unit or feature test |
-| HTML snapshots | the whole page | fail on every change; an update accepts the whole new page |
+Use it for tests that check the HTML a server renders: a response, a Blade view or component, a
+Livewire component, a TYPO3 or Symfony response, or a string of markup. It runs in a unit or feature
+test, without a browser.
+
+Do not use it for:
+
+- the DOM after a script ran: use a browser test, such as Pest's browser tests or Laravel Dusk;
+- CSS, layout and visibility: use a browser test (`getComputedStyle`);
+- accessibility rules: use `axe-core` in a browser test;
+- a snapshot of the whole page: it fails on every change; see
+  [the comparison](#comparison-with-assertsee-symfony-laravel-dom-assertions-and-browser-tests).
+
+### Scope
+
+The package checks the HTML a server renders, before any script runs, and keeps the tests of a
+project checking it that way. A behavior is in scope when the answer to this question is yes:
+
+> Does it check the HTML the server sent, before any script runs, or make a test check it that way?
+
+| Behavior | Scope |
+|---|---|
+| Elements, text and attributes, found by CSS selector | in |
+| A region of the page, and the `srcdoc` of an iframe | in |
+| A check of markup or of a class as a string, reported by PHPStan | in |
+| Crawler code rewritten to the tools of this package, by Rector | in |
+| The content of a `<template>`: a browser renders it only when a script copies it | out |
+| The DOM after a script ran | out |
+| Computed CSS, layout and visibility | out |
+| Accessibility rules | out |
+| A snapshot of the whole page | out |
+
+## Comparison with assertSee(), Symfony, laravel-dom-assertions and browser tests
+
+| Tool | What it checks | The difference | Source |
+|---|---|---|---|
+| `assertSee()` and `assertSeeHtml()` of `illuminate/testing` 13.43.0, Pest's `toContain()` | a string | passes on text in an attribute or a script, fails when the markup around the text changes | [TestResponse.php](https://github.com/laravel/framework/blob/v13.43.0/src/Illuminate/Testing/TestResponse.php) |
+| Symfony's `assertSelectorTextContains()` and the other `assertSelector…()` methods, 7.4.22 | CSS selectors | through `DomCrawlerAssertionsTrait`, on the client's last response; no regions; the message shows no HTML | [DomCrawlerAssertionsTrait.php](https://github.com/symfony/symfony/blob/v7.4.22/src/Symfony/Bundle/FrameworkBundle/Test/DomCrawlerAssertionsTrait.php), [CrawlerSelectorTextContains.php](https://github.com/symfony/symfony/blob/v7.4.22/src/Symfony/Component/DomCrawler/Test/Constraint/CrawlerSelectorTextContains.php) |
+| `sinnbeck/laravel-dom-assertions` 4.2.0 | CSS selectors | Laravel's test responses, views and Livewire components; this package also reads Symfony, TYPO3 and PSR-7 responses and adds PHPStan rules | [README](https://github.com/sinnbeck/laravel-dom-assertions/blob/v4.2.0/README.md) |
+| Laravel Dusk 8.9.0, `pestphp/pest-plugin-browser` 5.2.0 | a real browser | for JavaScript, CSS and clicks. This package checks the HTML the server renders, in a unit or feature test, without a browser | [Dusk](https://github.com/laravel/dusk/blob/v8.9.0/README.md), [Pest's browser tests](https://github.com/pestphp/pest-plugin-browser/blob/v5.2.0/README.md) |
+| HTML snapshots, such as `spatie/phpunit-snapshot-assertions` 5.4.0 | the whole page | fail on every change; an update accepts the whole new page | [README](https://github.com/spatie/phpunit-snapshot-assertions/blob/5.4.0/README.md) |
 
 ## Requirements
 
 - PHP 8.3, 8.4 or 8.5
-- PHPUnit 12.5 or 13
-- Pest 4 or 5, optional, for the expectations
+- PHPUnit 12.5 or a later 12.x, or 13.2 or a later 13.x
+- Pest 4 or 5, optional, for the expectations; the CI tests 4.7 and later
 - the PHP extensions `dom` and `mbstring`
-- Symfony DomCrawler and CssSelector 7.4 or 8.1
+- Symfony DomCrawler and CssSelector 7.4 or a later 7.x, or 8.1 or a later 8.x
 - Composer 2.1 or later
 
-The CI tests three stacks: PHP 8.3 with PHPUnit 12, Pest 4, Laravel 12 and Symfony 7.4; PHP 8.4 with
-the newest versions; PHP 8.5 with the versions of `composer.lock`.
+The CI tests PHP 8.3 with the lowest versions Composer installs and with the locked ones
+(`composer.lock`), PHP 8.4 with the locked ones, PHP 8.5 with the newest ones, and PHP 8.5 on macOS
+with the locked ones.
 
 ## Namespaces
 
@@ -154,8 +209,8 @@ Each check takes one of these:
 The package tells the kinds apart by class. None of their frameworks is a dependency. Another value
 stops the check with `NotAPage`, also under `->not`: a negated check cannot pass on a wrong value.
 
-A string is parsed as a whole page, the way a browser parses it. A fragment of a table without its
-table loses its tags: `<td>x</td>` alone becomes the text `x`. Wrap such a fragment in `<table>`.
+A string is parsed as a whole page. Wrap a fragment of a table in its `<table>`: on PHP 8.4 and
+later, `<td>x</td>` alone becomes the text `x`, as in a browser; on PHP 8.3, it stays a `td`.
 
 ## Checks
 
@@ -213,12 +268,15 @@ each argument, also the message of the test, but not the region. `assertHtmlNot(
 trait keeps the text of this package, with the region. To give the reason and the region in Pest,
 count zero nodes: `toHaveSelectorCount('[data-cart]', 0, 'The cart is empty after checkout.')`.
 
-`within()`, `frame()` and `eachMatch()` find the region that the checks after them, or in the
-callback of `eachMatch()`, read. A missing region stops the test, also under `->not`: `within()` and
-`frame()` with `NotOneNode`, a frame without `srcdoc` with `NotAPage`, `eachMatch()` with `NoMatch`.
-`->not->eachMatch()` stops with a `LogicException`: it would pass where one match fails. Turn the
-checks in the callback around. After `within()` or `frame()`, Pest drops a `->not` before the next
-`within()` or `frame()`. Turn the check after them around.
+`within()` and `frame()` set the region for the checks that follow them; `eachMatch()` sets it for the
+checks in its callback.
+
+- A missing region stops the test, even under `->not`: `within()` and `frame()` with `NotOneNode`, a
+  frame without `srcdoc` with `NotAPage`, `eachMatch()` with `NoMatch`.
+- `->not->eachMatch()` stops with a `LogicException`, because it would pass where one match fails.
+  Turn the checks in the callback around instead.
+- After `within()` or `frame()`, Pest drops a `->not` placed directly before the next `within()` or
+  `frame()`. Turn the check that follows them around instead.
 
 ### The reason for a check
 
@@ -231,7 +289,7 @@ expect($response)->toHaveSelectorCount('[data-cart] li', 3, 'The cart keeps the 
 self::assertHtmlSelectorCount($response, '[data-cart] li', 3, 'The cart keeps the items of the last visit.');
 ```
 
-```
+```text
 The cart keeps the items of the last visit.
 Failed asserting that (page) has 3 nodes matching "[data-cart] li".
 The selector "[data-cart] li" finds 2 nodes.
@@ -252,6 +310,9 @@ The selector "[data-cart] li" finds 2 nodes.
 
 `html($value)` turns a page into an `Html`. Pest passes a method it does not know to the object it
 expects and keeps checking the result, so on an `Html` the methods below chain like expectations.
+A check after `within()` or `frame()` looks inside the region, even after another check. A value
+(`texts()`, `rawTexts()`, `attributes()`) or a second `within()` after a check reads the whole page
+again, because Pest goes back to the value of `expect()`: give it an `expect()` of its own.
 
 ```php
 use function SorgeIt\PhpunitPestHtmlAssertions\Pest\html;
@@ -298,7 +359,7 @@ In plain PHP, `Html` has the same methods: `Html::of($value)->within($selector)`
 The message gives the path of regions, what was asked, what was found, and the region itself as
 indented HTML, cut at 40 lines:
 
-```
+```text
 Failed asserting that (page) > [data-cart] has one node matching "[data-name="Pear"]" with the text "Pear, ripe".
 Its text is "Pear".
 
@@ -312,7 +373,7 @@ In (page) > [data-cart]:
 
 A check of one node that finds none or two says so, with the same region:
 
-```
+```text
 NotOneNode: (page) > [data-cart]: a check of one node needs exactly one match. The selector "[data-name]" finds 2 nodes.
 ```
 
@@ -431,7 +492,7 @@ A check that compares a string on purpose gets an ignore comment on its line. Wr
 parentheses. PHPStan reports the comment when the rule no longer reports the line:
 
 ```php
-expect($rewritten)->toBe($expected); // @phpstan-ignore html.markupAsString (the rewriter keeps every other byte)
+expect($rewritten)->toBe('<a href="/next">Next</a>'); // @phpstan-ignore html.markupAsString (the rewriter keeps all other bytes)
 expect($script)->toContain('lg:hidden'); // @phpstan-ignore html.classAsString (the script adds the class)
 ```
 
@@ -467,8 +528,8 @@ for Laravel Boost. With them, an agent writes these checks instead of string che
 
 **Laravel Boost** lists the package on `php artisan boost:install`, also as a `require-dev`
 dependency. Pick it in the list of third-party guidelines and skills, or add it to `packages` in
-`boost.json`. Boost then writes the guideline into the guideline file of the agent, for example
-`CLAUDE.md`, and installs the skill:
+`boost.json` and run `php artisan boost:update`. Boost then writes the guideline into the guideline
+file of the agent, for example `CLAUDE.md`, and installs the skill:
 
 ```json
 {
@@ -478,7 +539,7 @@ dependency. Pick it in the list of third-party guidelines and skills, or add it 
 
 **Claude Code** installs the skill as a plugin of this repository:
 
-```
+```text
 /plugin marketplace add sorge-it/phpunit-pest-html-assertions
 /plugin install phpunit-pest-html-assertions@sorge-it
 ```
@@ -490,29 +551,34 @@ dependency. Pick it in the list of third-party guidelines and skills, or add it 
 npx skills add sorge-it/phpunit-pest-html-assertions
 ```
 
-## Not in scope
+## Support
 
-- CSS: whether a rule takes effect is a question for a browser test (`getComputedStyle`).
-- Accessibility: `axe-core` in a browser test.
-- HTML snapshots: see [Compared with](#compared-with).
-
-## Development
-
-A problem comes as a pull request that fixes it, not as an issue. How to run the checks of the
-package: [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Security
-
-Report a vulnerability privately through GitHub. See [SECURITY.md](SECURITY.md).
+Found a bug? Open a pull request with a failing test; a fix is welcome but not required. The issue
+tracker is closed; [CONTRIBUTING.md](https://github.com/sorge-it/phpunit-pest-html-assertions/blob/main/.github/CONTRIBUTING.md)
+covers the setup, the tests and what a pull request needs. Report a vulnerability privately through
+GitHub; see the [security policy](https://github.com/sorge-it/phpunit-pest-html-assertions/security/policy).
 
 ## License
 
-MIT. See [LICENSE.md](LICENSE.md).
+MIT; see [LICENSE](LICENSE).
 
 ## About the author
 
-**Stefan Sorge** · PHP expert, builder, agentic engineer.
-25 years of PHP and tech for 40+ startups. I build tools that humans and AI agents
-read and act on the same way.
+**Stefan Sorge** is a PHP expert, builder and agentic engineer. He has written PHP for more than 25
+years and has built software for over 40 startups. His tools are made for Agentic DX: a developer
+and a coding agent read the same output and act on it the same way.
+
+PHP packages:
+
+- [http-server](https://github.com/sorge-it/http-server): an in-process HTTP/1.1 server for Pest
+  and PHPUnit browser tests; the page sees the test's `RefreshDatabase` transaction, `actingAs()`
+  user and fakes
+- [cdp-browser-installer](https://github.com/sorge-it/cdp-browser-installer): an installer for
+  chrome-headless-shell and ChromeDriver of the same version from Chrome for Testing, pinned and
+  SHA-256-checked
+- [safe-unzip](https://github.com/sorge-it/safe-unzip): a ZIP extractor that checks each archive
+  against a strict allow list and refuses Zip Slip, overlapping zip bombs and symbolic links
+- [phpunit-pest-html-assertions](https://github.com/sorge-it/phpunit-pest-html-assertions): HTML
+  assertions for PHPUnit and Pest that check rendered HTML with CSS selectors, never as a string
 
 [GitHub](https://github.com/sorge-it) · [LinkedIn](https://www.linkedin.com/in/stefansorge/)

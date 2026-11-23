@@ -21,9 +21,14 @@
             <directory>tests/Rector</directory>
         </testsuite>
     </testsuites>
+    <!-- Composer loads the two Autoload.php before the coverage starts. The Pest suite and StackTraceTest check what they call. -->
     <source>
         <include>
             <directory>src</directory>
         </include>
+        <exclude>
+            <file>src/PHPUnit/Autoload.php</file>
+            <file>src/Pest/Autoload.php</file>
+        </exclude>
     </source>
 </phpunit>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The type coverage reads src and tests; phpunit.xml keeps src alone for the line coverage. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         cacheDirectory=".tmp/phpunit">
+    <source>
+        <include>
+            <directory>src</directory>
+            <directory>tests</directory>
+        </include>
+    </source>
+</phpunit>

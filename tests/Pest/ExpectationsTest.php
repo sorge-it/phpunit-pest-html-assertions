@@ -6,6 +6,7 @@ use Illuminate\Testing\TestResponse;
 use Nyholm\Psr7\Response as Psr7Response;
 use Pest\Expectation;
 use PHPUnit\Framework\ExpectationFailedException;
+use SorgeIt\PhpunitPestHtmlAssertions\Pest\Expectations;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Constraint\NotOneNode;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\Html;
 use SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NoMatch;
@@ -242,6 +243,15 @@ it('shows the message of the test among the arguments of a check turned around',
         "not to have selector attribute '[data-agree]' 'checked' 'The box starts empty.'.",
     ],
 ]);
+
+it('checks as before after it registers its expectations a second time', function (): void {
+    Expectations::register();
+
+    expect(Page::HTML)->toHaveSelector('[data-people]')
+        ->eachMatch('[data-name]', fn (Expectation $name): Expectation => $name->toHaveSelectorClass(':scope', 'rounded-lg'))
+        ->and(fn (): mixed => expect(Page::HTML)->toHaveSelector('[data-here]'))
+        ->toThrow(ExpectationFailedException::class);
+});
 
 it('shows the message and the region where a count of zero says that a node is missing', function (): void {
     expect(fn (): mixed => expect(Page::HTML)->toHaveSelectorCount('[data-people]', 0, 'The cart is empty after checkout.'))

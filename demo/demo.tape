@@ -12,33 +12,38 @@ Set FontSize 16
 Set Theme "Catppuccin Mocha"
 Set Padding 24
 Set Framerate 24
-Set TypingSpeed 35ms
+Set TypingSpeed 20ms
 Set CursorBlink false
 
+# A first run fills the cache of PHPStan, so the recorded run shows its result at once.
 Hide
-Type "cd demo/app && export PS1='$ ' && clear"
+Type "cd demo/app && export PS1='$ ' && vendor/bin/phpstan analyse --no-progress > /dev/null; clear"
 Enter
+Wait+Line@120s /^\$$/
 Show
 
 Sleep 800ms
 Type "cat tests/StringTest.php"
 Enter
-Sleep 2s
+Sleep 1.5s
 Type "vendor/bin/pest tests/StringTest.php"
 Enter
-Sleep 4s
+Wait+Screen@60s /Duration/
+Sleep 3s
 Type "grep data-total cart.php"
 Enter
-Sleep 2.5s
+Sleep 1.5s
 Type "vendor/bin/phpstan analyse --no-progress"
 Enter
-Sleep 6s
+Wait+Screen@60s /Found 1 error/
+Sleep 5s
 
 Type "clear"
 Enter
 Type "cat tests/CartTest.php"
 Enter
-Sleep 2s
+Sleep 1.5s
 Type "vendor/bin/pest tests/CartTest.php"
 Enter
-Sleep 9s
+Wait+Screen@60s /CartTest.php:8/
+Sleep 8s

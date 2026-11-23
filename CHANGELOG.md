@@ -1,6 +1,48 @@
 # Changelog
 
-## 1.4.2
+## 1.4.3 - 2026-11-23
+
+### Documentation
+
+- The README names the requirements as `composer.json` sets them: PHPUnit 12.5 or a later 12.x, or
+  13.2 or a later 13.x; Symfony 7.4 or a later 7.x, or 8.1 or a later 8.x. It said "PHPUnit 12.5 or
+  13" and "7.4 or 8.1" before. It names Pest 4.7 as the lowest version the CI tests.
+- On PHP 8.3, a fragment such as `<td>x</td>` keeps its tags; the README said it loses them, which
+  holds on PHP 8.4 and later.
+- In a chain on `Html`, a value such as `texts()` or a second `within()` after a check reads the whole
+  page again. The README and the skill say so; they said every check after `within()` looks inside
+  the region, which holds for checks only.
+- `toHaveText()` compares the whole text of the region. The skill shows it after `within()`.
+- The example of an ignore comment for `html.markupAsString` compares a literal. With a variable,
+  PHPStan reported the comment as unused.
+- After an entry in `packages` of `boost.json`, the README names `php artisan boost:update`.
+- The skill names the PHPUnit method of each expectation, and `assertHtmlNot()`.
+- A bug report may be a pull request with only a failing test; before, `CONTRIBUTING.md` asked for
+  the fix too.
+- The badges are Tests, Latest Version, PHP Version and License.
+- The README has a table of contents, says when to use the package and when not to, and states its
+  scope as a table. The comparison names the version and the source of each tool. The README ends
+  with Support, License and About the author; Development and Security are part of Support now.
+  "Not in scope" is now "When to use it and when not to", and "Compared with" is now "Comparison
+  with assertSee(), Symfony, laravel-dom-assertions and browser tests".
+- `CONTRIBUTING.md`, `SECURITY.md` and `CODE_OF_CONDUCT.md` moved to `.github/`; `LICENSE.md` is
+  now `LICENSE`.
+- The demo shows the report of PHPStan for five seconds. Before, it showed it for a fraction of a
+  second. The social preview shows the claim of the README, the string check that passes and the
+  check by selector that fails, in a larger font.
+
+### Development
+
+- `composer.lock` holds the versions for PHP 8.3, the lowest PHP the package supports.
+- The CI tests PHP 8.3 with the lowest and the locked versions, PHP 8.4 with the locked ones, PHP
+  8.5 with the newest ones, and macOS with PHP 8.5 and the locked ones. It also runs every week,
+  requires 100% line coverage, validates and audits the package, and checks the workflows. A weekly
+  workflow runs the mutation tests.
+- Dependabot updates the actions and the images of the CI and the demo.
+
+A project sees no change: the package behaves as in 1.4.2.
+
+## 1.4.2 - 2026-10-06
 
 ### Fixed
 
@@ -18,7 +60,7 @@
 - A check that found its node only inside a `<template>` now finds none. Check the node the page
   shows, or the `<template>` element itself.
 
-## 1.4.1
+## 1.4.1 - 2026-10-06
 
 ### Changed
 
@@ -26,7 +68,7 @@
   PHPStan. A project sees no change: `phpstan/extension-installer` loaded the rules before, through
   `extra.phpstan`.
 
-## 1.4.0
+## 1.4.0 - 2026-10-06
 
 ### Added
 
@@ -62,7 +104,7 @@
 - A test that expects frames of this package in a trace runs with `HTML_ASSERTIONS_SHOW_FRAMES=1`
   set in the shell. In `phpunit.xml` it comes too late: Composer loads the package first.
 
-## 1.3.0
+## 1.3.0 - 2026-10-06
 
 ### Added
 
@@ -98,7 +140,7 @@
   `SorgeIt\PhpunitPestHtmlAssertions\PHPUnit\NoMatch`. PHPUnit counts these as errors.
 - `frame()` counts as one assertion, not two.
 
-## 1.2.0
+## 1.2.0 - 2026-10-06
 
 ### Added
 
